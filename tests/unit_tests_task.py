@@ -7,10 +7,10 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_create_task_data() -> dict:
-    """Fixture that provides mock data for creating a task.
+    """Fixture that provides mock data for creating a task
 
     Returns:
-        dict: A dictionary containing the task title, description, and status.
+        dict: A dictionary containing the task title, description, and status
     """
     return {
         "title": "Task title",
@@ -21,10 +21,10 @@ def mock_create_task_data() -> dict:
 
 @pytest.fixture
 def mock_create_user_data() -> dict:
-    """Fixture that provides mock data for creating a user.
+    """Fixture that provides mock data for of the user
 
     Returns:
-        dict: A dictionary containing the user's username and password.
+        dict: A dictionary containing the user's username and password
     """
     return {
         "username": "test_username",
@@ -34,13 +34,13 @@ def mock_create_user_data() -> dict:
 
 @pytest.fixture
 def jwt_token(mock_create_user_data) -> str:
-    """Fixture that registers a user, logs in, and retrieves a JWT token.
+    """Fixture that registers a user, logs in, and retrieves a JWT token
 
     Args:
-        mock_create_user_data (dict): The mock data used to register and authenticate the user.
+        mock_create_user_data (dict): The mock data used to register and authenticate the user
 
     Returns:
-        str: The JWT token for the authenticated user.
+        str: The JWT token for the authenticated user
     """
     response = client.post(
         url="/get",
@@ -52,14 +52,14 @@ def jwt_token(mock_create_user_data) -> str:
 
 @pytest.fixture
 def create_task(jwt_token: str, mock_create_task_data: dict) -> dict:
-    """Fixture that creates a task using the JWT token for authorization.
+    """Fixture that creates a task using the JWT token for authorization
 
     Args:
-        jwt_token (str): The JWT token for the authenticated user.
-        mock_create_task_data (dict): The mock data for creating the task.
+        jwt_token (str): The JWT token for the authenticated user
+        mock_create_task_data (dict): The mock data for creating the task
 
     Returns:
-        dict: A dictionary containing the details of the created task, including its ID.
+        dict: A dictionary containing the details of the created task, including its ID
     """
     response = client.post(
         url="/tasks/",
@@ -74,10 +74,10 @@ def test_create_task(create_task: dict):
     """Test creating a new task.
 
     Args:
-        create_task (dict): The created task data, provided by the create_task fixture.
+        create_task (dict): The created task data, provided by the create_task fixture
 
     Asserts:
-        The created task has the correct title, description, status, owner, and an ID.
+        The created task has the correct title, description, status, owner, and an ID
     """
     created_task = create_task
 
@@ -89,14 +89,14 @@ def test_create_task(create_task: dict):
 
 
 def test_update_task(jwt_token: str, create_task: dict):
-    """Test updating an existing task.
+    """Test updating an existing task
 
     Args:
-        jwt_token (str): The JWT token for the authenticated user.
-        create_task (dict): The created task data, provided by the create_task fixture.
+        jwt_token (str): The JWT token for the authenticated user
+        create_task (dict): The created task data, provided by the create_task fixture
 
     Asserts:
-        The updated task has the correct title, description, status, and owner.
+        The updated task has the correct title, description, status, and owner
     """
     task_id = create_task['id']
     update_data = {
@@ -120,14 +120,14 @@ def test_update_task(jwt_token: str, create_task: dict):
 
 
 def test_get_task(jwt_token: str, create_task: dict):
-    """Test retrieving a task.
+    """Test retrieving a task
 
     Args:
-        jwt_token (str): The JWT token for the authenticated user.
-        create_task (dict): The created task data, provided by the create_task fixture.
+        jwt_token (str): The JWT token for the authenticated user
+        create_task (dict): The created task data, provided by the create_task fixture
 
     Asserts:
-        The retrieved task has the correct title, description, status, and owner.
+        The retrieved task has the correct title, description, status, and owner
     """
     response = client.get(
         url="/tasks",
@@ -144,14 +144,14 @@ def test_get_task(jwt_token: str, create_task: dict):
 
 
 def test_delete_task(jwt_token: str, create_task: dict):
-    """Test deleting a task.
+    """Test deleting a task
 
     Args:
-        jwt_token (str): The JWT token for the authenticated user.
-        create_task (dict): The created task data, provided by the create_task fixture.
+        jwt_token (str): The JWT token for the authenticated user
+        create_task (dict): The created task data, provided by the create_task fixture
 
     Asserts:
-        The task is successfully deleted (status code 200).
+        The task is successfully deleted (status code 200)
     """
     task_id = create_task['id']
 
