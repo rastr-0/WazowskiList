@@ -52,15 +52,7 @@ def jwt_token(mock_create_user_data) -> str:
 
 @pytest.fixture
 def create_task(jwt_token: str, mock_create_task_data: dict) -> dict:
-    """Fixture that creates a task using the JWT token for authorization
-
-    Args:
-        jwt_token (str): The JWT token for the authenticated user
-        mock_create_task_data (dict): The mock data for creating the task
-
-    Returns:
-        dict: A dictionary containing the details of the created task, including its ID
-    """
+    """Fixture that creates a task using the JWT token for authorization"""
     response = client.post(
         url="/tasks/",
         json=mock_create_task_data,
@@ -71,14 +63,7 @@ def create_task(jwt_token: str, mock_create_task_data: dict) -> dict:
 
 
 def test_create_task(create_task: dict):
-    """Test creating a new task.
-
-    Args:
-        create_task (dict): The created task data, provided by the create_task fixture
-
-    Asserts:
-        The created task has the correct title, description, status, owner, and an ID
-    """
+    """Test creating a new task"""
     created_task = create_task
 
     assert created_task['title'] == "Task title"
@@ -89,15 +74,7 @@ def test_create_task(create_task: dict):
 
 
 def test_update_task(jwt_token: str, create_task: dict):
-    """Test updating an existing task
-
-    Args:
-        jwt_token (str): The JWT token for the authenticated user
-        create_task (dict): The created task data, provided by the create_task fixture
-
-    Asserts:
-        The updated task has the correct title, description, status, and owner
-    """
+    """Test updating an existing task"""
     task_id = create_task['id']
     update_data = {
         "title": "Updated title",
@@ -120,15 +97,7 @@ def test_update_task(jwt_token: str, create_task: dict):
 
 
 def test_get_task(jwt_token: str, create_task: dict):
-    """Test retrieving a task
-
-    Args:
-        jwt_token (str): The JWT token for the authenticated user
-        create_task (dict): The created task data, provided by the create_task fixture
-
-    Asserts:
-        The retrieved task has the correct title, description, status, and owner
-    """
+    """Test retrieving a task"""
     response = client.get(
         url="/tasks",
         headers={"Authorization": f"Bearer {jwt_token}"}
@@ -144,15 +113,7 @@ def test_get_task(jwt_token: str, create_task: dict):
 
 
 def test_delete_task(jwt_token: str, create_task: dict):
-    """Test deleting a task
-
-    Args:
-        jwt_token (str): The JWT token for the authenticated user
-        create_task (dict): The created task data, provided by the create_task fixture
-
-    Asserts:
-        The task is successfully deleted (status code 200)
-    """
+    """Test deleting a task"""
     task_id = create_task['id']
 
     response = client.delete(
