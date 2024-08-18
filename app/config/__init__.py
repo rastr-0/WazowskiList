@@ -14,8 +14,8 @@ class ServerSettings(BaseSettings):
     """
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    SERVER_HOST: str
-    PRODUCTION_SERVER_PORT: str
+    SERVER_HOST: str = Field(default="server_host")
+    PRODUCTION_SERVER_PORT: str = Field(default="server_port")
 
 
 class DatabaseSettings(BaseSettings):
@@ -31,11 +31,11 @@ class DatabaseSettings(BaseSettings):
     """
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    MONGO_HOST: str
-    MONGO_PORT: str
-    MONGO_DB: str
-    MONGO_USERNAME: str
-    MONGO_PASSWORD: str
+    MONGO_HOST: str = Field("mongo_host")
+    MONGO_PORT: str = Field("mongo_port")
+    MONGO_DB: str = Field("mongo_db_name")
+    MONGO_USERNAME: str = Field("mongo_username")
+    MONGO_PASSWORD: str = Field("mongo_password")
 
     @property
     def mongo_url(self) -> str:
@@ -47,4 +47,4 @@ class Settings(ServerSettings, DatabaseSettings):
     pass
 
 
-settings = Settings(_env_file=".env")
+settings = Settings(env_file=".env")
