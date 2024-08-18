@@ -32,7 +32,7 @@ class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     MONGO_HOST: str = Field("mongo_host")
-    MONGO_PORT: str = Field("mongo_port")
+    MONGO_PORT: int = Field(27017)
     MONGO_DB: str = Field("mongo_db_name")
     MONGO_USERNAME: str = Field("mongo_username")
     MONGO_PASSWORD: str = Field("mongo_password")
