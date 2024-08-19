@@ -1,0 +1,46 @@
+name: CI - Run Tests
+
+# Tests trigger on pushed to the dev brancch or when dev branch is mergred to prod branch
+on:
+  push:
+    branches:
+      - dev
+    pull_request:
+      branches:
+        - dev
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:5.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand('ping')'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5s
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/checkout@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          MONGODB_URL: mongodb://localhost:27017
+        run: |
+          pytest --maxfail=1 --disable-warnings
+
