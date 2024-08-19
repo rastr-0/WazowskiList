@@ -7,4 +7,3 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-4.4-brightgreen)
 ![Docker](https://img.shields.io/badge/Docker-20.10-blue)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Developer](https://img.shields.io/badge/Developer-rastr-0-orange)
