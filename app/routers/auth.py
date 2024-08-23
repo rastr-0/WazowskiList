@@ -92,6 +92,8 @@ async def create_user(
         user: CreateUser,
         db: Annotated[AsyncIOMotorDatabase, Depends(get_database)]
 ) -> Any:
+    # TODO: Check if user with the same `username` field already exist
+    #   if so, don't add user and throw an Exception
     """Endpoint for creating new user
 
     Args:
