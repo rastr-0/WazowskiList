@@ -1,4 +1,4 @@
-name: CI - Build the application in a Docker container and run tests
+name: CI pipeline -- build and test application
 
 # Triger an event when:
 #   1. Push is made to a dev branch
@@ -12,41 +12,39 @@ on:
       - dev
 
 jobs:
-  build:
+  test_application:
     name: Build Application from Dockerfile
     runs-on: ubuntu-latest
 
-  test:
-    runs-on: ubuntu-latest
-
-    services:
-      mongodb:
-        image: mongo:5.0
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand('ping')'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5s
-
     steps:
-      - name: Check out code
+      # pulling code from repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/checkout@v4
+      # preparing an environment for Docker builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # loging in to the GitHub container registry
+      # not necessary for this moment of time
+      # but might come in handy in the future
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          python-version: '3.10'
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      # installing python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
 
-      - name: Run tests
-        env:
-          MONGODB_URL: mongodb://localhost:27017
-        run: |
-          pytest --maxfail=1 --disable-warnings
+      # installing docker-compose
+      - name: Install Docker Compose
+        run: sudo apt-get install docker-compose -y
 
+      # this one will run a full CI process from the Makefile:
+      # building and running a container, then, running tests and shutting down a container
+      - name: Run CI process
+        run: sudo make ci
