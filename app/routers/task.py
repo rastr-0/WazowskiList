@@ -87,7 +87,7 @@ async def create_task(
     try:
         collection = db.get_collection("tasks")
         await collection.insert_one(db_task.model_dump())
-        tasks_logger.log(f"New task was successfully inserted by user: {current_user.username}")
+        tasks_logger.info(f"New task was successfully inserted by user: {current_user.username}")
     except Exception as e:
         tasks_logger.exception(f"Error inserting new task in the database by user: {current_user.username}")
         raise HTTPException(
@@ -275,7 +275,7 @@ async def delete_task(
     return {"detail": "Task was successfully deleted"}
 
 
-@router.get("/tasks")
+@router.get("/tasks", response_model=TaskCollection)
 async def get_task(
         db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
         current_user: Annotated[User, Depends(get_current_user)],
@@ -289,14 +289,14 @@ async def get_task(
             title="Sort tasks by specific fields",
             description="Available fields: `created_at`, `updated_at`",
             # regex checks that given string is one of the available fields
-            regex="^(created_at|updated_at)$"
+            pattern="^(created_at|updated_at)$"
         )] = None,
         sort_order: Annotated[str | None, Query(
             # default=None,
             title="Sorting order",
             description="Available orders: `asc`, `desc`",
             # regex checks that given string is one of the available fields
-            regex="^(asc|desc)$"
+            pattern="^(asc|desc)$"
         )] = None,
         skip: Annotated[int, Query(
             # default=0,
