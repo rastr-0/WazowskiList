@@ -14,8 +14,8 @@ down:
 	sudo docker stop $(DOCKER_IMAGE_NAME)
 
 test:
-	sudo docker exec -it $(DOCKER_IMAGE_NAME) pytest tests/tests_auth.py
-	sudo docker exec -it $(DOCKER_IMAGE_NAME) pytest tests/tests_task.py
+	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_auth.py
+	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_task.py
 
 # order of execution
 ci: build run test down
