@@ -31,6 +31,24 @@ jobs:
         with:
           python-version: "3.10"
 
+      # constructing a .env file from GitHub secrets
+      # probably, there is a more elegant way to do this
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          DEVELOPMENT_SERVER_PORT=${{ secrets.DEVELOPMENT_SERVER_PORT }}
+          MONGO_HOST=${{ secrets.MONGO_HOST }}
+          MONGO_PORT=${{ secrets.MONGO_PORT }}
+          MONGO_DB=${{ secrets.MONGO_DB }}
+          MONGO_USERNAME=${{ secrets.MONGO_USERNAME }}
+          MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
+          ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+          ALGORITHM=${{ secrets.ALGORITHM }}
+          PRODUCTION_SERVER_PORT=${{ secrets.PRODUCTION_SERVER_PORT }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          SERVER_HOST=${{ secrets.SERVER_HOST }}
+          EOF
+
       # installing docker-compose
       - name: Install Docker Compose
         run: sudo apt-get install docker-compose -y
