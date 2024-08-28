@@ -1,4 +1,4 @@
-name: CI pipeline -- build and test application
+name: Test pipeline
 
 # Triger an event when:
 #   1. Push is made to a dev branch
@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Build Application from Dockerfile
+    name: Build Application from Dockerfile and Test it with pytest
     runs-on: ubuntu-latest
 
     steps:
