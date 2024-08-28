@@ -1,12 +1,3 @@
-# This pipeline implement following steps:
-# -- checkout the 'main' branch
-# -- set up a docker buildx
-# -- log in to the GitHub Packages
-# -- extract version from the tag
-# -- build FastAPI application Docker image
-# -- push Docker image to a Docker registry
-# -- create a new release in the GitHub repository and tag it with some version
-
 name: Release pipeline
 
 # Trigger an event when:
