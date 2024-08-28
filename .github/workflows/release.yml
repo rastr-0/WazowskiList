@@ -1,0 +1,90 @@
+# This pipeline implement following steps:
+# -- checkout the 'main' branch
+# -- set up a docker buildx
+# -- log in to the GitHub Packages
+# -- extract version from the tag
+# -- build FastAPI application Docker image
+# -- push Docker image to a Docker registry
+# -- create a new release in the GitHub repository and tag it with some version
+
+name: Release pipeline
+
+# Trigger an event when:
+#   1.Push to 'main' branch with tag detected
+#   2.Manually
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+
+env:
+  IMAGE_NAME: wazowski-app
+
+jobs:
+  build-and-post:
+    name: Build a Docker image and push to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      # pulling code from repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # preparing an environment for Docker builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # logging in to GitHub Packages
+      - name: Log in to GitHub Packages
+        run: | 
+          echo "${{ secrets.TOKEN_GITHUB }}" | 
+          docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # extracting tag from /refs/tags directory
+      # example: .../refs/tags/v1.0.0 --> 1.0.0
+      - name: Extract version from the tag
+        id: extract_version
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> "$GITHUB_OUTPUT"
+
+      # building a Docker image and storing it in the GitHub Container Registry
+      - name: Build Docker image
+        id: build
+        run: docker build . --tag ghcr.io/${{ github.repository_owner }}
+            /$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }}
+
+      # pushing created docker image to GitHub Packages
+      # steps explanation:
+      # -- pushing docker image with specified tag to a Docker registry
+      # -- tagging the same Docker image as 'latest'
+      # -- pushing the same docker image with other tag ('latest') to a Docker registry
+      - name: Push Docker image to GitHub Packages
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:
+          ${{ steps.extract_version.outputs.VERSION }}
+          
+          docker tag ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:
+            ${{ steps.extract_version.outputs.VERSION }} ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
+          
+          docker push ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
+
+      # creating a new release in GitHub repo and tag it with the version
+      # detailed explanation of the release is read from CHANGELOG.md file
+      # which is maintained manually by a developer
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
+        with:
+          tag_name: v${{ github.extract_version.outputs.VERSION }}
+          release_name: Release ${{ github.extract_version.outputs.VERSION }}
+          body: |
+            $(cat CHANGELOG.md)
+          draft: false
+          prerelease: false
