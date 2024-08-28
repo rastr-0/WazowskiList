@@ -47,8 +47,10 @@ jobs:
       # building a Docker image and storing it in the GitHub Container Registry
       - name: Build Docker image
         id: build
-        run: docker build . --tag ghcr.io/${{ github.repository_owner }}
-            /$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }}
+        run: |
+          docker build . \
+            --file Dockerfile \
+            --tag ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }}
 
       # pushing created docker image to GitHub Packages
       # steps explanation:
@@ -57,13 +59,15 @@ jobs:
       # -- pushing the same docker image with other tag ('latest') to a Docker registry
       - name: Push Docker image to GitHub Packages
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:
-          ${{ steps.extract_version.outputs.VERSION }}
+          docker push \
+            ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }}
           
-          docker tag ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:
-            ${{ steps.extract_version.outputs.VERSION }} ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
+          docker tag \
+            ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }} \
+            ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
           
-          docker push ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
+          docker push \
+            ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
 
       # creating a new release in GitHub repo and tag it with the version
       # detailed explanation of the release is read from CHANGELOG.md file
