@@ -1,16 +1,12 @@
 name: Release pipeline
 
-# Trigger an event when:
-#   1.Push to 'main' branch with tag detected
-#   2.Manually
+# Trigger an event when new tag pushed to the 'master' branch
 on:
-  pull_request:
+  push:
+    tags:
+        - "v*"
     branches:
       - master
-    tags:
-      - "v*"
-  workflow_dispatch:
-
 
 env:
   IMAGE_NAME: wazowski-app
@@ -77,9 +73,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
         with:
-          tag_name: v${{ github.extract_version.outputs.VERSION }}
+          tag_name: ${{ github.extract_version.outputs.VERSION }}
           release_name: Release ${{ github.extract_version.outputs.VERSION }}
           body: |
             $(cat CHANGELOG.md)
           draft: false
-          prerelease: false
+          prerelease: true
