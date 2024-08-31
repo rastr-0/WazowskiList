@@ -27,3 +27,23 @@ WazowskiList is a basic backend project built with FastAPI, providing RESTful AP
 - **Framework:** FastAPI
 - **Database:** MongoDB
 - **Containerization:** Docker
+
+### Pipelines
+WazowskiList employs two GitHub Actions pipelines to streamline development and release processes:
+
+##### Test Pipeline
+- **Trigger:** Activated whenever a push is made to the `dev` branch
+- **Purpose:** This pipeline runs the test suite to ensure that new changes do not introduce bugs or regressions
+- **Actions:** 
+  - Pull the latest code from the `dev` branch
+  - Set up the environment and dependencies
+  - Execute the unit tests using Pytest
+
+##### Release Pipeline
+- **Trigger:** Initiated when a new tag is pushed to the `master` branch following the pattern `v*` (e.g., `v0.1.0`)
+- **Purpose:** This pipeline automates the process of building, packaging, and releasing the application
+- **Actions:**
+  - Check out the code associated with the tag
+  - Build a Docker image for the application
+  - Push the Docker image to GitHub Packages
+  - Create a new GitHub release with the associated tag
