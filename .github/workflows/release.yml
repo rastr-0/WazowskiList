@@ -1,12 +1,10 @@
 name: Release pipeline
 
-# Trigger an event when new tag pushed to the 'master' branch
+# Trigger an event when new tag is pushed
 on:
   push:
     tags:
-        - "v*"
-    branches:
-      - master
+        - "*.*.*"
 
 env:
   IMAGE_NAME: wazowski-app
