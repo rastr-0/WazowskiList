@@ -6,7 +6,7 @@ from app.models.user import User
 from app.schemas.user import UserResponse, CreateUser, UpdateUser, UserResponseUpdate
 # db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.database.database import get_database
+from app.database.database import motor_db
 # logs
 from app.logs.logging_config import auth_logger
 # utils
@@ -37,7 +37,7 @@ Common Parameters:
 @router.post("/token", response_model=utils.Token)
 async def login_for_access_token(
         form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
     """Endpoint for user loging to receive an access token
 
@@ -90,7 +90,7 @@ async def login_for_access_token(
 @router.post("/register", response_model=UserResponse)
 async def create_user(
         user: CreateUser,
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
     # TODO: Check if user with the same `username` field already exist
     #   if so, don't add user and throw an Exception
@@ -150,7 +150,7 @@ async def create_user(
 async def update_user(
         update_user_data: UpdateUser,
         current_user: Annotated[User, Depends(utils.get_current_user)],
-        db: AsyncIOMotorDatabase = Depends(get_database)
+        db: AsyncIOMotorDatabase = Depends(motor_db.get_database)
 ) -> Any:
     # TODO:
     #  FIX: User's info updating works only when all fields are passed, otherwise, doesn't work

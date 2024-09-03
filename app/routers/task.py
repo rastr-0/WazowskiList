@@ -6,7 +6,7 @@ from app.models.user import User
 from app.schemas.task import CreateTask, UpdateTask, TaskResponse, TaskCollection
 # db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.database.database import get_database
+from app.database.database import motor_db
 # utils
 from app.utils.utils import get_current_user
 # logs
@@ -37,7 +37,7 @@ Common Parameters:
 @router.post("/tasks", response_model=TaskResponse)
 async def create_task(
         task: CreateTask,
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)]
 ) -> Any:
     """Endpoint for creating new task in the database
@@ -101,7 +101,7 @@ async def create_task(
 async def update_task(
         task_id: str,
         task_update: UpdateTask,
-        db: AsyncIOMotorDatabase = Depends(get_database),
+        db: AsyncIOMotorDatabase = Depends(motor_db.get_database),
         current_user: User = Depends(get_current_user)
 ) -> Any:
     """Endpoint for updating an existing task in the database based on its title.
@@ -230,7 +230,7 @@ async def update_task(
 @router.delete("/tasks/{task_id}")
 async def delete_task(
         task_id: str,
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)]
 ) -> dict:
     """Endpoint for deleting task specified by its id
@@ -277,7 +277,7 @@ async def delete_task(
 
 @router.get("/tasks", response_model=TaskCollection)
 async def get_task(
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)],
         task_status: Annotated[str | None, Query(
             # default=None,
