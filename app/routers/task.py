@@ -8,7 +8,7 @@ from app.schemas.task import CreateTask, UpdateTask, TaskResponse, TaskCollectio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.database.database import motor_db
 # utils
-from app.utils.utils import get_current_user
+from app.utils.utils import get_current_user, convert_to_task_response
 # logs
 from app.logs.logging_config import tasks_logger
 # other modules
@@ -61,17 +61,19 @@ async def create_task(
     Examples:
         Request Body
         {
-            "title": "new task title",
-            "description": "new task description",
-            "status": "status of new task"
+            "title": "task title",
+            "description": "task description",
+            "status": "task status",
+            "label": "task label"
         }
         Response Body
         {
             "id": "cff06f70-d6fa-43b3-a7e6-9a130169f7c6",
-            "title": "new task title",
-            "description": "new task description",
-            "status": "status of new task",
+            "title": "task title",
+            "description": "task description",
+            "status": "task status",
             "owner": "newuser",
+            "label": "task label",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": None
         }
@@ -82,6 +84,7 @@ async def create_task(
         description=task.description,
         status=task.status,
         owner=current_user.username,
+        label=task.label,
         created_at=datetime.utcnow()
     )
     try:
@@ -101,7 +104,7 @@ async def create_task(
 async def update_task(
         task_id: str,
         task_update: UpdateTask,
-        db: AsyncIOMotorDatabase = Depends(motor_db.get_database),
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: User = Depends(get_current_user)
 ) -> Any:
     """Endpoint for updating an existing task in the database based on its title.
@@ -126,15 +129,17 @@ async def update_task(
         {
             "title": "new task title",
             "description": "new task description",
-            "status": "status of new task"
+            "status": "new task status",
+            "label": "new task label"
         }
         Response Body:
         {
             "id": "cff06f70-d6fa-43b3-a7e6-9a130169f7c6",
             "title": "new task title",
             "description": "new task description",
-            "status": "status of new task",
+            "status": "new task status",
             "owner": "newuser",
+            "label": "new task label",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": "2024-09-10T20:20:50Z"
         }
@@ -214,7 +219,7 @@ async def update_task(
     tasks_logger.info(
         f"Task successfully updated (task_id: {task_id}; user: {current_user.username})"
     )
-
+    """
     # TODO: rewrite with using utils.convert_to_task_response
     return TaskResponse(
         id=updated_task["id"],
@@ -222,9 +227,12 @@ async def update_task(
         description=updated_task["description"],
         status=updated_task["status"],
         owner=updated_task["owner"],
+        label=updated_task["label"],
         created_at=updated_task["created_at"],
         updated_at=updated_task["updated_at"]
     )
+    """
+    return convert_to_task_response(updated_task.model_dump())
 
 
 @router.delete("/tasks/{task_id}")
@@ -297,6 +305,10 @@ async def get_task(
             description="Available orders: `asc`, `desc`",
             # regex checks that given string is one of the available fields
             pattern="^(asc|desc)$"
+        )] = None,
+        include_labels: Annotated[str | None, Query(
+            title="Tasks labels",
+            description="Tasks with specific label(s) to include in a response"
         )] = None,
         skip: Annotated[int, Query(
             # default=0,
@@ -394,6 +406,7 @@ async def get_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch tasks from the database: {e}"
         )
+    """
     # TODO: rewrite with using utils.convert_to_task_response
     task_models = list(
         TaskResponse(
@@ -404,6 +417,13 @@ async def get_task(
             owner=task['owner'],
             created_at=task['created_at'],
             updated_at=task['updated_at']
+        )
+        for task in tasks
+    )
+    """
+    task_models = list(
+        convert_to_task_response(
+            task.model_dump()
         )
         for task in tasks
     )
