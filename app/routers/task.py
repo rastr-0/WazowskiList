@@ -219,20 +219,8 @@ async def update_task(
     tasks_logger.info(
         f"Task successfully updated (task_id: {task_id}; user: {current_user.username})"
     )
-    """
-    # TODO: rewrite with using utils.convert_to_task_response
-    return TaskResponse(
-        id=updated_task["id"],
-        title=updated_task["title"],
-        description=updated_task["description"],
-        status=updated_task["status"],
-        owner=updated_task["owner"],
-        label=updated_task["label"],
-        created_at=updated_task["created_at"],
-        updated_at=updated_task["updated_at"]
-    )
-    """
-    return convert_to_task_response(updated_task.model_dump())
+
+    return convert_to_task_response(updated_task)
 
 
 @router.delete("/tasks/{task_id}")
@@ -406,25 +394,9 @@ async def get_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch tasks from the database: {e}"
         )
-    """
-    # TODO: rewrite with using utils.convert_to_task_response
+
     task_models = list(
-        TaskResponse(
-            id=task['id'],
-            title=task['title'],
-            description=task['description'],
-            status=task['status'],
-            owner=task['owner'],
-            created_at=task['created_at'],
-            updated_at=task['updated_at']
-        )
-        for task in tasks
-    )
-    """
-    task_models = list(
-        convert_to_task_response(
-            task.model_dump()
-        )
+        convert_to_task_response(task)
         for task in tasks
     )
 

@@ -179,12 +179,14 @@ async def update_username_dependencies(old_username: str, new_username: str, db:
 
 
 def convert_to_task_response(task: dict) -> TaskResponse:
+    print(task)
     return TaskResponse(
         id=task['id'],
         title=task['title'],
         description=task['description'],
         status=task['status'],
         owner=task['owner'],
+        label=task['label'],
         created_at=task['created_at'],
         updated_at=task['updated_at']
     )
