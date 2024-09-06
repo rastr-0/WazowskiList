@@ -85,7 +85,8 @@ def mock_task_data() -> dict:
     return {
         "title": "Task title",
         "description": "Task description",
-        "status": "Not done"
+        "status": "Not done",
+        "label": "important"
     }
 
 
@@ -106,7 +107,8 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         json={
             "title": mock_task_data['title'],
             "description": mock_task_data['description'],
-            "status": mock_task_data['status']
+            "status": mock_task_data['status'],
+            "label": mock_task_data['label']
         },
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -118,5 +120,6 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         "title": task['title'],
         "description": task['description'],
         "status": task['status'],
-        "owner": task['owner']
+        "owner": task['owner'],
+        "label": task['label']
     }
