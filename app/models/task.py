@@ -13,6 +13,7 @@ class Task(BaseModel):
         description (str): Description of the task
         status (str): Status of the task
         owner (str): Creator of the task
+        label (str): Label of the task
         created_at (datetime): Timestamp when task was created
         updated_at (datetime): Timestamp when task was updated
         model_config (ConfigDict):
@@ -38,6 +39,9 @@ class Task(BaseModel):
     owner: str = Field(
         description="Owner of the task"
     )
+    label: str = Field(
+        description="Label of the task"
+    )
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="Timestamp when task was created"
@@ -58,6 +62,7 @@ class Task(BaseModel):
                     "description": "Learn new words from the previous class",
                     "status": "pending",
                     "owner": "rastr",
+                    "label": "important",
                     "created_at": "2024, 7, 18, 14, 35, 6, 789754",
                     "updated_at": "2024, 9, 3, 17, 13, 5, 426102"
                 }

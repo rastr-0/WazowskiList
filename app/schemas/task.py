@@ -22,13 +22,17 @@ class CreateTask(BaseModel):
         default="not done",
         description="Status of the task"
     )
+    label: str = Field(
+        description="Label of the task"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "title": "Buy groceries",
                     "description": "Milk, Bread, Cheese, Diet Coke",
-                    "status": "not done"
+                    "status": "not done",
+                    "label": "shopping"
                 }
             ]
         }
