@@ -53,6 +53,14 @@ jobs:
       - name: Install Docker Compose
         run: sudo apt-get install docker-compose -y
 
+      # caching pre-commit dependencies for saving execution time of the pipeline
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-precommit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+
       # this one will run a full CI process from the Makefile:
       # building and running a container, then, running tests and shutting down a container
       - name: Run CI process

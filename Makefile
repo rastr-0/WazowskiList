@@ -3,6 +3,7 @@
 
 DOCKER_IMAGE_NAME=fastapi-app-dev
 COMPOSE_FILE=docker-compose.dev.yml
+COMPOSE_PROJECT_NAME=fastapi_ci
 
 build:
 	sudo docker build -t $(DOCKER_IMAGE_NAME) .
@@ -12,10 +13,14 @@ run:
 
 down:
 	sudo docker stop $(DOCKER_IMAGE_NAME)
+	docker-compose -f $(COMPOSE_FILE) down --volumes
+
+pre-commit-hooks:
+	sudo docker exec -t $(DOCKER_IMAGE_NAME) pre-commit run --all-files
 
 test:
 	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_auth.py
 	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_task.py
 
 # order of execution
-ci: build run test down
+ci: build run pre-commit-hooks test down
