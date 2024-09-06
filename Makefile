@@ -15,12 +15,16 @@ down:
 	sudo docker stop $(DOCKER_IMAGE_NAME)
 	docker-compose -f $(COMPOSE_FILE) down --volumes
 
+verify:
+	sudo docker exec -it fastapi-app-dev git rev-parse --is-inside-work-tree
+
+
 pre-commit-hooks:
-	sudo docker exec -t $(DOCKER_IMAGE_NAME) pre-commit run --all-files
+	sudo docker exec -t $(DOCKER_IMAGE_NAME) bash -c "cd /docker_app && pre-commit install && pre-commit run --all-files"
 
 test:
 	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_auth.py
 	sudo docker exec -t $(DOCKER_IMAGE_NAME) pytest tests/tests_task.py
 
 # order of execution
-ci: build run pre-commit-hooks test down
+ci: build run verify pre-commit-hooks test down

@@ -28,8 +28,8 @@ jobs:
 
       # logging in to GitHub Packages
       - name: Log in to GitHub Packages
-        run: | 
-          echo "${{ secrets.TOKEN_GITHUB }}" | 
+        run: |
+          echo "${{ secrets.TOKEN_GITHUB }}" |
           docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       # extracting tag from /refs/tags directory
@@ -55,11 +55,11 @@ jobs:
         run: |
           docker push \
             ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }}
-          
+
           docker tag \
             ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:${{ steps.extract_version.outputs.VERSION }} \
             ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
-          
+
           docker push \
             ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:latest
 

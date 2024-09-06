@@ -34,7 +34,7 @@ WazowskiList employs two GitHub Actions pipelines to streamline development and 
 ##### Test Pipeline
 - **Trigger:** Activated whenever a push is made to the `dev` branch
 - **Purpose:** This pipeline runs the test suite to ensure that new changes do not introduce bugs or regressions
-- **Actions:** 
+- **Actions:**
   - Pull the latest code from the `dev` branch
   - Set up the environment and dependencies
   - Execute the unit tests using Pytest

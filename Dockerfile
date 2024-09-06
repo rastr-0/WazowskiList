@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app /docker_app/app
 COPY tests /docker_app/tests
 
+# Mark the mounted directory as a safe Git directory
+RUN git config --global --add safe.directory /docker_app
+
 # include working directory in python's path
 ENV PYTHONPATH=/docker_app
 

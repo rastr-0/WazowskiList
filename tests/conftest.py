@@ -3,12 +3,12 @@ from app.main import app
 import pytest
 
 """
-This file defines fixtures for both `auth` and `task` unit tests: 
+This file defines fixtures for both `auth` and `task` unit tests:
     - client
     - jwt_token
     - mock_used_data
     - mock_task_data
-    - create_task 
+    - create_task
 """
 
 
