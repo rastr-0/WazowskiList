@@ -1,6 +1,9 @@
 # basic docker image
 FROM python:3.10-slim
 
+# install git
+RUN apt-get update && apt-get install -y git
+
 # working directory
 WORKDIR /docker_app
 
