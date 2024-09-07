@@ -10,6 +10,7 @@ def test_create_task(create_task: dict) -> None:
     assert created_task['status'] == "Not done"
     assert created_task['owner'] == "test_username"
     assert created_task['label'] == "important"
+    assert created_task['deadline'] == "2024-12-11"
 
 
 def test_update_task(client: TestClient, jwt_token, create_task: dict) -> None:
@@ -21,7 +22,8 @@ def test_update_task(client: TestClient, jwt_token, create_task: dict) -> None:
         "title": "Updated title",
         "description": "Updated description",
         "status": "Done",
-        "label": "extremely important"
+        "label": "extremely important",
+        "deadline": "2024-12-15"
     }
     response = client.put(
         url=f"/tasks/{task_id}",
@@ -37,6 +39,7 @@ def test_update_task(client: TestClient, jwt_token, create_task: dict) -> None:
     assert updated_task['status'] == "Done"
     assert updated_task['owner'] == "test_username"
     assert updated_task['label'] == "extremely important"
+    assert updated_task['deadline'] == "2024-12-15"
 
 
 def test_get_task(client: TestClient, jwt_token, create_task: dict) -> None:
@@ -59,6 +62,7 @@ def test_get_task(client: TestClient, jwt_token, create_task: dict) -> None:
     assert tasks[0]['status'] == "Done"
     assert tasks[0]['owner'] == "test_username"
     assert tasks[0]['label'] == "extremely important"
+    assert tasks[0]['deadline'] == "2024-12-15"
 
 
 def test_delete_task(client: TestClient, jwt_token, create_task: dict) -> None:

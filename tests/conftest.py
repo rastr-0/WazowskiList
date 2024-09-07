@@ -86,7 +86,8 @@ def mock_task_data() -> dict:
         "title": "Task title",
         "description": "Task description",
         "status": "Not done",
-        "label": "important"
+        "label": "important",
+        "deadline": "2024-12-11"
     }
 
 
@@ -98,7 +99,6 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         client (TestClient): Fixture that creates a FastAPI TestClient instance
         jwt_token: Fixture that provides a JWT token for requests
         mock_task_data (dict): The mock data used
-
         """
     token = jwt_token('updated')
 
@@ -108,7 +108,8 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
             "title": mock_task_data['title'],
             "description": mock_task_data['description'],
             "status": mock_task_data['status'],
-            "label": mock_task_data['label']
+            "label": mock_task_data['label'],
+            "deadline": mock_task_data['deadline']
         },
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -121,5 +122,6 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         "description": task['description'],
         "status": task['status'],
         "owner": task['owner'],
-        "label": task['label']
+        "label": task['label'],
+        "deadline": task['deadline']
     }
