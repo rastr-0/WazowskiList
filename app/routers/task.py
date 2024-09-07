@@ -14,7 +14,7 @@ from app.logs.logging_config import tasks_logger
 # other modules
 from typing import Any, Annotated
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 
 router = APIRouter()
 
@@ -64,7 +64,8 @@ async def create_task(
             "title": "task title",
             "description": "task description",
             "status": "task status",
-            "label": "task label"
+            "label": "task label",
+            "deadline": "2024-12-11"
         }
         Response Body
         {
@@ -74,6 +75,7 @@ async def create_task(
             "status": "task status",
             "owner": "newuser",
             "label": "task label",
+            "deadline": "2024-12-11",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": None
         }
@@ -85,6 +87,7 @@ async def create_task(
         status=task.status,
         owner=current_user.username,
         label=task.label,
+        deadline=task.deadline,
         created_at=datetime.utcnow()
     )
     try:
@@ -130,7 +133,8 @@ async def update_task(
             "title": "new task title",
             "description": "new task description",
             "status": "new task status",
-            "label": "new task label"
+            "label": "new task label",
+            "deadline": "2024-12-15"
         }
         Response Body:
         {
@@ -140,6 +144,7 @@ async def update_task(
             "status": "new task status",
             "owner": "newuser",
             "label": "new task label",
+            "deadline": "2024-12-15",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": "2024-09-10T20:20:50Z"
         }
@@ -294,9 +299,17 @@ async def get_task(
             # regex checks that given string is one of the available fields
             pattern="^(asc|desc)$"
         )] = None,
-        include_labels: Annotated[str | None, Query(
+        include_labels: Annotated[list[str] | None, Query(
             title="Tasks labels",
-            description="Tasks with specific label(s) to include in a response"
+            description="A list of specific labels to filter tasks by"
+        )] = None,
+        max_deadline: Annotated[date | None, Query(
+            title="Tasks max deadline",
+            description="The latest deadline to include tasks up to (inclusive)"
+        )] = None,
+        min_dealine: Annotated[date | None, Query(
+            title="Tasks min deadline",
+            description="The earliest deadline to include tasks from (inclusive)"
         )] = None,
         skip: Annotated[int, Query(
             # default=0,
@@ -322,6 +335,9 @@ async def get_task(
         task_status (str - optional): Status of the tasks
         sort_by (str - optional): Field based on which tasks will be sorted
         sort_order (str - optional): Order in which tasks will be sorted (ascending or descending)
+        include_labels (list(str) - optional): A list of specific labels to filter tasks by
+        max_deadline (date - optional): Deadline to include tasks until passed value (inclusive)
+        min_dealine (date - optional): Deadline to include tasks before passed value (inclusive)
         skip (str - ptional): Number of tasks to skip (for pagination)
         limit (str - optional): Maximum number of tasks to return (for pagination)
 
@@ -346,6 +362,8 @@ async def get_task(
                     "description": "new task description 1",
                     "status": "status of new task 1",
                     "owner": "newuser1",
+                    "label": "not done",
+                    "deadline": "2024-12-11",
                     "created_at": "2024-10-08T17:20:13Z",
                     "updated_at": date or None
                 },
@@ -355,6 +373,8 @@ async def get_task(
                     "description": "new task description 2",
                     "status": "status of new task 2",
                     "owner": "newuser2",
+                    "label": "done",
+                    "deadline": "2024-12-12",
                     "created_at": "2024-11-03T15:01:53Z",
                     "updated_at": date or None
                 }
@@ -364,6 +384,8 @@ async def get_task(
     tasks_logger.info(
         f"Fetching tasks for user: {current_user.username} with params - "
         f"status: {task_status}, sort_by: {sort_by}, sort_order: {sort_order}, "
+        f"include_labels: {include_labels}, "
+        f"max_deadline: {max_deadline}, min_deadline: {min_dealine}, "
         f"skip: {skip}, limit: {limit}"
     )
 
@@ -378,9 +400,17 @@ async def get_task(
     sort_criteria = [(sort_by, sort_order_value)] if sort_by and sort_order_value else None
 
     try:
-        query = {'owner': current_user.username}
+        query = {
+            'owner': current_user.username
+        }
         if task_status:
             query['status'] = task_status
+        if include_labels:
+            query['label'] = {"$in": include_labels}
+        if max_deadline:
+            query['deadline'] = {"$lte": max_deadline}
+        if min_dealine:
+            query.setdefault('deadline', {})["$gte"] = min_dealine
 
         collection = db.get_collection("tasks")
         cursor = collection.find(query).skip(skip).limit(limit)

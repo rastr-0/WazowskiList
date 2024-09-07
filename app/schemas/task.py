@@ -1,5 +1,8 @@
+from email.policy import default
+
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.task import Task
+from datetime import date
 
 
 class CreateTask(BaseModel):
@@ -25,6 +28,10 @@ class CreateTask(BaseModel):
     label: str = Field(
         description="Label of the task"
     )
+    deadline: date | None = Field(
+        default=None,
+        description="Deadline of the task"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
@@ -32,7 +39,8 @@ class CreateTask(BaseModel):
                     "title": "Buy groceries",
                     "description": "Milk, Bread, Cheese, Diet Coke",
                     "status": "not done",
-                    "label": "shopping"
+                    "label": "shopping",
+                    "deadline": "2024-12-11"
                 }
             ]
         }
