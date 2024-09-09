@@ -42,7 +42,7 @@ def test_update_task(client: TestClient, jwt_token, create_task: dict) -> None:
     assert updated_task['deadline'] == "2024-12-15"
 
 
-def test_get_task(client: TestClient, jwt_token, create_task: dict) -> None:
+def test_get_task(client: TestClient, jwt_token) -> None:
     """Test retrieving a task"""
     token = jwt_token("updated")
 
