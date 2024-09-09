@@ -10,11 +10,13 @@ class Task(BaseModel):
     Attributes:
         id (uuid.UUID): ID of the task
         title (str): Title of the task
-        description (str): Description of the task
+        description (str | None): Description of the task
         status (str): Status of the task
         owner (str): Creator of the task
+        label (str): Label of the task
+        deadline (datetime | None): Deadline of the task
         created_at (datetime): Timestamp when task was created
-        updated_at (datetime): Timestamp when task was updated
+        updated_at (datetime | None): Timestamp when task was updated
         model_config (ConfigDict):
             TypedDict for configuring Pydantic behaviour,
             including usage example for OpenAPI
@@ -38,6 +40,13 @@ class Task(BaseModel):
     owner: str = Field(
         description="Owner of the task"
     )
+    label: str = Field(
+        description="Label of the task"
+    )
+    deadline: datetime | None = Field(
+        default=None,
+        description="Deadline of the task, format: YYYY-mm-dd"
+    )
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="Timestamp when task was created"
@@ -58,6 +67,8 @@ class Task(BaseModel):
                     "description": "Learn new words from the previous class",
                     "status": "pending",
                     "owner": "rastr",
+                    "label": "important",
+                    "deadline": "2024-12-11",
                     "created_at": "2024, 7, 18, 14, 35, 6, 789754",
                     "updated_at": "2024, 9, 3, 17, 13, 5, 426102"
                 }

@@ -2,14 +2,14 @@ name: Test pipeline
 
 # Triger an event when:
 #   1. Push is made to a dev branch
-#   2. Pull Request is made to a dev branch
+#   2. Pull Request is made to a master branch
 on:
   push:
     branches:
       - dev
   pull_request:
     branches:
-      - dev
+      - master
 
 jobs:
   build-and-test:
@@ -52,6 +52,14 @@ jobs:
       # installing docker-compose
       - name: Install Docker Compose
         run: sudo apt-get install docker-compose -y
+
+      # caching pre-commit dependencies for saving execution time of the pipeline
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-precommit-${{ hashFiles('.pre-commit-config.yaml') }}
+
 
       # this one will run a full CI process from the Makefile:
       # building and running a container, then, running tests and shutting down a container

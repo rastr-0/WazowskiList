@@ -14,7 +14,7 @@ services:
     env_file:
       - .env
     environment:
-      - PYTHONPAH=/app
+      - PYTHONPAH=/docker_app
     depends_on:
       - mongodb
     networks:

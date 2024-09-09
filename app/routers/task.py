@@ -6,15 +6,15 @@ from app.models.user import User
 from app.schemas.task import CreateTask, UpdateTask, TaskResponse, TaskCollection
 # db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.database.database import get_database
+from app.database.database import motor_db
 # utils
-from app.utils.utils import get_current_user
+from app.utils.utils import get_current_user, convert_to_task_response
 # logs
 from app.logs.logging_config import tasks_logger
 # other modules
 from typing import Any, Annotated
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 
 router = APIRouter()
 
@@ -37,7 +37,7 @@ Common Parameters:
 @router.post("/tasks", response_model=TaskResponse)
 async def create_task(
         task: CreateTask,
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)]
 ) -> Any:
     """Endpoint for creating new task in the database
@@ -61,27 +61,41 @@ async def create_task(
     Examples:
         Request Body
         {
-            "title": "new task title",
-            "description": "new task description",
-            "status": "status of new task"
+            "title": "task title",
+            "description": "task description",
+            "status": "task status",
+            "label": "task label",
+            "deadline": "2024-12-11"
         }
         Response Body
         {
             "id": "cff06f70-d6fa-43b3-a7e6-9a130169f7c6",
-            "title": "new task title",
-            "description": "new task description",
-            "status": "status of new task",
+            "title": "task title",
+            "description": "task description",
+            "status": "task status",
             "owner": "newuser",
+            "label": "task label",
+            "deadline": "2024-12-11",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": None
         }
 
     """
+    # We need to specify a default time when converting a date to a datetime object
+    # because the model's 'deadline' field is of type datetime. MongoDB stores
+    # datetime objects, not date objects. When the user provides only a date
+    # (without specifying the time), it is essential to set a default time (e.g.,
+    # midnight) to create a complete datetime object for MongoDB
+    # (it cannot store date object)
+    deadline_datetime = datetime.combine(task.deadline, datetime.min.time())
+
     db_task = Task(
         title=task.title,
         description=task.description,
         status=task.status,
         owner=current_user.username,
+        label=task.label,
+        deadline=deadline_datetime,
         created_at=datetime.utcnow()
     )
     try:
@@ -94,14 +108,14 @@ async def create_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error inserting new task in the database: {e}"
         )
-    return db_task
+    return convert_to_task_response(db_task.model_dump())
 
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
         task_id: str,
         task_update: UpdateTask,
-        db: AsyncIOMotorDatabase = Depends(get_database),
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: User = Depends(get_current_user)
 ) -> Any:
     """Endpoint for updating an existing task in the database based on its title.
@@ -126,15 +140,19 @@ async def update_task(
         {
             "title": "new task title",
             "description": "new task description",
-            "status": "status of new task"
+            "status": "new task status",
+            "label": "new task label",
+            "deadline": "2024-12-15"
         }
         Response Body:
         {
             "id": "cff06f70-d6fa-43b3-a7e6-9a130169f7c6",
             "title": "new task title",
             "description": "new task description",
-            "status": "status of new task",
+            "status": "new task status",
             "owner": "newuser",
+            "label": "new task label",
+            "deadline": "2024-12-15",
             "created_at": "2024-09-08T17:17:10Z",
             "updated_at": "2024-09-10T20:20:50Z"
         }
@@ -155,6 +173,8 @@ async def update_task(
             detail="No fields to update provided"
         )
 
+    print(update_data)
+
     # Tasks collection in the database
     collection = db.get_collection("tasks")
 
@@ -167,20 +187,35 @@ async def update_task(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid UUID format: {e}"
+            detail=f"Invalid UUID format"
         )
+
+    # Check if 'deadline' is a date and convert it to datetime if needed
+    if 'deadline' in update_data:
+        # Convert date to datetime with a default time of 00:00:00
+        update_data['deadline'] = datetime.combine(update_data['deadline'], datetime.min.time())
 
     # Update the updated_at field
     update_data["updated_at"] = datetime.now()
 
-    tasks_logger.info(
-        f"Attempting to update task_id: {task_id} by user: {current_user.username} with data: {update_data}"
-    )
+    try:
+        tasks_logger.info(
+            f"Attempting to update task_id: {task_id} by user: {current_user.username} with data: {update_data}"
+        )
 
-    result = await collection.update_one(
-        {"id": task_uuid, "owner": current_user.username},
-        {"$set": update_data}
-    )
+        result = await collection.update_one(
+            {"id": task_uuid, "owner": current_user.username},
+            {"$set": update_data}
+        )
+    # TODO: update this general Exception to more detailed one
+    except Exception as e:
+        tasks_logger.error(
+            f"Task was not updated (task_id: {task_id}; user: {current_user.username}). Error: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Task was not updated"
+        )
 
     if result.matched_count == 0:
         tasks_logger.warning(
@@ -200,7 +235,7 @@ async def update_task(
             detail="Failed to update task data"
         )
 
-    updated_task = await collection.find_one({"id": task_uuid})
+    updated_task: dict = await collection.find_one({"id": task_uuid})
 
     if not updated_task:
         tasks_logger.error(
@@ -215,22 +250,13 @@ async def update_task(
         f"Task successfully updated (task_id: {task_id}; user: {current_user.username})"
     )
 
-    # TODO: rewrite with using utils.convert_to_task_response
-    return TaskResponse(
-        id=updated_task["id"],
-        title=updated_task["title"],
-        description=updated_task["description"],
-        status=updated_task["status"],
-        owner=updated_task["owner"],
-        created_at=updated_task["created_at"],
-        updated_at=updated_task["updated_at"]
-    )
+    return convert_to_task_response(updated_task)
 
 
 @router.delete("/tasks/{task_id}")
 async def delete_task(
         task_id: str,
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)]
 ) -> dict:
     """Endpoint for deleting task specified by its id
@@ -277,7 +303,7 @@ async def delete_task(
 
 @router.get("/tasks", response_model=TaskCollection)
 async def get_task(
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
         current_user: Annotated[User, Depends(get_current_user)],
         task_status: Annotated[str | None, Query(
             # default=None,
@@ -297,6 +323,18 @@ async def get_task(
             description="Available orders: `asc`, `desc`",
             # regex checks that given string is one of the available fields
             pattern="^(asc|desc)$"
+        )] = None,
+        include_labels: Annotated[list[str] | None, Query(
+            title="Tasks labels",
+            description="A list of specific labels to filter tasks by"
+        )] = None,
+        max_deadline: Annotated[date | None, Query(
+            title="Tasks max deadline",
+            description="The latest deadline to include tasks up to (inclusive)"
+        )] = None,
+        min_deadline: Annotated[date | None, Query(
+            title="Tasks min deadline",
+            description="The earliest deadline to include tasks from (inclusive)"
         )] = None,
         skip: Annotated[int, Query(
             # default=0,
@@ -322,6 +360,9 @@ async def get_task(
         task_status (str - optional): Status of the tasks
         sort_by (str - optional): Field based on which tasks will be sorted
         sort_order (str - optional): Order in which tasks will be sorted (ascending or descending)
+        include_labels (list(str) - optional): A list of specific labels to filter tasks by
+        max_deadline (date - optional): Deadline to include tasks until passed value (inclusive)
+        min_deadline (date - optional): Deadline to include tasks before passed value (inclusive)
         skip (str - ptional): Number of tasks to skip (for pagination)
         limit (str - optional): Maximum number of tasks to return (for pagination)
 
@@ -346,6 +387,8 @@ async def get_task(
                     "description": "new task description 1",
                     "status": "status of new task 1",
                     "owner": "newuser1",
+                    "label": "not done",
+                    "deadline": "2024-12-11",
                     "created_at": "2024-10-08T17:20:13Z",
                     "updated_at": date or None
                 },
@@ -355,6 +398,8 @@ async def get_task(
                     "description": "new task description 2",
                     "status": "status of new task 2",
                     "owner": "newuser2",
+                    "label": "done",
+                    "deadline": "2024-12-12",
                     "created_at": "2024-11-03T15:01:53Z",
                     "updated_at": date or None
                 }
@@ -364,6 +409,8 @@ async def get_task(
     tasks_logger.info(
         f"Fetching tasks for user: {current_user.username} with params - "
         f"status: {task_status}, sort_by: {sort_by}, sort_order: {sort_order}, "
+        f"include_labels: {include_labels}, "
+        f"max_deadline: {max_deadline}, min_deadline: {min_deadline}, "
         f"skip: {skip}, limit: {limit}"
     )
 
@@ -378,9 +425,30 @@ async def get_task(
     sort_criteria = [(sort_by, sort_order_value)] if sort_by and sort_order_value else None
 
     try:
-        query = {'owner': current_user.username}
+        query = {
+            'owner': current_user.username
+        }
         if task_status:
             query['status'] = task_status
+        if include_labels:
+            query['label'] = {"$in": include_labels}
+
+        deadline_query: dict[str, datetime] = {}
+
+        if max_deadline:
+            # adding to 'max_deadline' default time
+            # this step may be not clear, but this needed to be done
+            # because MongoDB can store only dates with time
+            # and user cannot pass date already with the default time, it would be hella strange approach
+            max_deadline_datetime = datetime.combine(max_deadline, datetime.min.time())
+            deadline_query['$lte'] = max_deadline_datetime
+        if min_deadline:
+            # the same as in 'max_deadline'
+            min_deadline_datetime = datetime.combine(min_deadline, datetime.min.time())
+            deadline_query['$gte'] = min_deadline_datetime
+
+        if deadline_query:
+            query['deadline'] = deadline_query
 
         collection = db.get_collection("tasks")
         cursor = collection.find(query).skip(skip).limit(limit)
@@ -394,17 +462,9 @@ async def get_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch tasks from the database: {e}"
         )
-    # TODO: rewrite with using utils.convert_to_task_response
+
     task_models = list(
-        TaskResponse(
-            id=task['id'],
-            title=task['title'],
-            description=task['description'],
-            status=task['status'],
-            owner=task['owner'],
-            created_at=task['created_at'],
-            updated_at=task['updated_at']
-        )
+        convert_to_task_response(task)
         for task in tasks
     )
 

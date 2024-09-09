@@ -3,12 +3,12 @@ from app.main import app
 import pytest
 
 """
-This file defines fixtures for both `auth` and `task` unit tests: 
+This file defines fixtures for both `auth` and `task` unit tests:
     - client
     - jwt_token
     - mock_used_data
     - mock_task_data
-    - create_task 
+    - create_task
 """
 
 
@@ -85,7 +85,9 @@ def mock_task_data() -> dict:
     return {
         "title": "Task title",
         "description": "Task description",
-        "status": "Not done"
+        "status": "Not done",
+        "label": "important",
+        "deadline": "2024-12-11"
     }
 
 
@@ -97,7 +99,6 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         client (TestClient): Fixture that creates a FastAPI TestClient instance
         jwt_token: Fixture that provides a JWT token for requests
         mock_task_data (dict): The mock data used
-
         """
     token = jwt_token('updated')
 
@@ -106,7 +107,9 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         json={
             "title": mock_task_data['title'],
             "description": mock_task_data['description'],
-            "status": mock_task_data['status']
+            "status": mock_task_data['status'],
+            "label": mock_task_data['label'],
+            "deadline": mock_task_data['deadline']
         },
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -118,5 +121,7 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
         "title": task['title'],
         "description": task['description'],
         "status": task['status'],
-        "owner": task['owner']
+        "owner": task['owner'],
+        "label": task['label'],
+        "deadline": task['deadline']
     }

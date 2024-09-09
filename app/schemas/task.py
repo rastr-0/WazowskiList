@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.task import Task
+from datetime import datetime, date
 
 
 class CreateTask(BaseModel):
@@ -22,13 +23,22 @@ class CreateTask(BaseModel):
         default="not done",
         description="Status of the task"
     )
+    label: str = Field(
+        description="Label of the task"
+    )
+    deadline: datetime | None = Field(
+        default=None,
+        description="Deadline of the task"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "title": "Buy groceries",
                     "description": "Milk, Bread, Cheese, Diet Coke",
-                    "status": "not done"
+                    "status": "not done",
+                    "label": "shopping",
+                    "deadline": "2024-12-11"
                 }
             ]
         }
@@ -55,7 +65,10 @@ class UpdateTask(CreateTask):
 
 
 class TaskResponse(Task):
-    pass
+    deadline: date | None = Field(
+        default=None,
+        description="Deadline of the task"
+    )
 
 
 class TaskCollection(BaseModel):

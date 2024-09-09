@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0] - 2024-08-09
+## [0.2.0] - 01.09.2024
 
 ### Added
 - **Basic User Authentication:** Implemented authentication based on JWT tokens

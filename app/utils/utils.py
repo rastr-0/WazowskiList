@@ -3,7 +3,7 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 # db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.database.database import get_database
+from app.database.database import motor_db
 # pydantic models
 from app.schemas.task import TaskResponse
 # password hashing
@@ -118,7 +118,7 @@ async def authenticate_user(username: str, password: str, db: AsyncIOMotorDataba
 
 async def get_current_user(
         token: Annotated[str, Depends(oauth2_scheme)],
-        db: Annotated[AsyncIOMotorDatabase, Depends(get_database)]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> User:
     """Decode JWT token and check if user exists in database
 
@@ -185,6 +185,8 @@ def convert_to_task_response(task: dict) -> TaskResponse:
         description=task['description'],
         status=task['status'],
         owner=task['owner'],
+        label=task['label'],
+        deadline=task['deadline'].date(),
         created_at=task['created_at'],
         updated_at=task['updated_at']
     )

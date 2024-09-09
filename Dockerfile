@@ -1,6 +1,9 @@
 # basic docker image
 FROM python:3.10-slim
 
+# install git
+RUN apt-get update && apt-get install -y git
+
 # working directory
 WORKDIR /docker_app
 
@@ -13,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # copy all the necessery directories to container
 COPY app /docker_app/app
 COPY tests /docker_app/tests
+
+# Mark the mounted directory as a safe Git directory
+RUN git config --global --add safe.directory /docker_app
 
 # include working directory in python's path
 ENV PYTHONPATH=/docker_app
