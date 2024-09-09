@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime, date
+from datetime import datetime
 import uuid
 
 
@@ -14,7 +14,7 @@ class Task(BaseModel):
         status (str): Status of the task
         owner (str): Creator of the task
         label (str): Label of the task
-        deadline (date | None): Deadline of the task
+        deadline (datetime | None): Deadline of the task
         created_at (datetime): Timestamp when task was created
         updated_at (datetime | None): Timestamp when task was updated
         model_config (ConfigDict):
@@ -43,7 +43,7 @@ class Task(BaseModel):
     label: str = Field(
         description="Label of the task"
     )
-    deadline: date | None = Field(
+    deadline: datetime | None = Field(
         default=None,
         description="Deadline of the task, format: YYYY-mm-dd"
     )

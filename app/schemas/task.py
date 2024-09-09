@@ -1,8 +1,6 @@
-from email.policy import default
-
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.task import Task
-from datetime import date
+from datetime import datetime, date
 
 
 class CreateTask(BaseModel):
@@ -28,7 +26,7 @@ class CreateTask(BaseModel):
     label: str = Field(
         description="Label of the task"
     )
-    deadline: date | None = Field(
+    deadline: datetime | None = Field(
         default=None,
         description="Deadline of the task"
     )
@@ -67,7 +65,10 @@ class UpdateTask(CreateTask):
 
 
 class TaskResponse(Task):
-    pass
+    deadline: date | None = Field(
+        default=None,
+        description="Deadline of the task"
+    )
 
 
 class TaskCollection(BaseModel):

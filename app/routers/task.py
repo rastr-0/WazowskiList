@@ -81,13 +81,21 @@ async def create_task(
         }
 
     """
+    # We need to specify a default time when converting a date to a datetime object
+    # because the model's 'deadline' field is of type datetime. MongoDB stores
+    # datetime objects, not date objects. When the user provides only a date
+    # (without specifying the time), it is essential to set a default time (e.g.,
+    # midnight) to create a complete datetime object for MongoDB
+    # (it cannot store date object)
+    deadline_datetime = datetime.combine(task.deadline, datetime.min.time())
+
     db_task = Task(
         title=task.title,
         description=task.description,
         status=task.status,
         owner=current_user.username,
         label=task.label,
-        deadline=task.deadline,
+        deadline=deadline_datetime,
         created_at=datetime.utcnow()
     )
     try:
@@ -100,7 +108,7 @@ async def create_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error inserting new task in the database: {e}"
         )
-    return db_task
+    return convert_to_task_response(db_task.model_dump())
 
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
@@ -165,6 +173,8 @@ async def update_task(
             detail="No fields to update provided"
         )
 
+    print(update_data)
+
     # Tasks collection in the database
     collection = db.get_collection("tasks")
 
@@ -177,20 +187,35 @@ async def update_task(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid UUID format: {e}"
+            detail=f"Invalid UUID format"
         )
+
+    # Check if 'deadline' is a date and convert it to datetime if needed
+    if 'deadline' in update_data:
+        # Convert date to datetime with a default time of 00:00:00
+        update_data['deadline'] = datetime.combine(update_data['deadline'], datetime.min.time())
 
     # Update the updated_at field
     update_data["updated_at"] = datetime.now()
 
-    tasks_logger.info(
-        f"Attempting to update task_id: {task_id} by user: {current_user.username} with data: {update_data}"
-    )
+    try:
+        tasks_logger.info(
+            f"Attempting to update task_id: {task_id} by user: {current_user.username} with data: {update_data}"
+        )
 
-    result = await collection.update_one(
-        {"id": task_uuid, "owner": current_user.username},
-        {"$set": update_data}
-    )
+        result = await collection.update_one(
+            {"id": task_uuid, "owner": current_user.username},
+            {"$set": update_data}
+        )
+    # TODO: update this general Exception to more detailed one
+    except Exception as e:
+        tasks_logger.error(
+            f"Task was not updated (task_id: {task_id}; user: {current_user.username}). Error: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Task was not updated"
+        )
 
     if result.matched_count == 0:
         tasks_logger.warning(
@@ -210,7 +235,7 @@ async def update_task(
             detail="Failed to update task data"
         )
 
-    updated_task = await collection.find_one({"id": task_uuid})
+    updated_task: dict = await collection.find_one({"id": task_uuid})
 
     if not updated_task:
         tasks_logger.error(
@@ -307,7 +332,7 @@ async def get_task(
             title="Tasks max deadline",
             description="The latest deadline to include tasks up to (inclusive)"
         )] = None,
-        min_dealine: Annotated[date | None, Query(
+        min_deadline: Annotated[date | None, Query(
             title="Tasks min deadline",
             description="The earliest deadline to include tasks from (inclusive)"
         )] = None,
@@ -337,7 +362,7 @@ async def get_task(
         sort_order (str - optional): Order in which tasks will be sorted (ascending or descending)
         include_labels (list(str) - optional): A list of specific labels to filter tasks by
         max_deadline (date - optional): Deadline to include tasks until passed value (inclusive)
-        min_dealine (date - optional): Deadline to include tasks before passed value (inclusive)
+        min_deadline (date - optional): Deadline to include tasks before passed value (inclusive)
         skip (str - ptional): Number of tasks to skip (for pagination)
         limit (str - optional): Maximum number of tasks to return (for pagination)
 
@@ -385,7 +410,7 @@ async def get_task(
         f"Fetching tasks for user: {current_user.username} with params - "
         f"status: {task_status}, sort_by: {sort_by}, sort_order: {sort_order}, "
         f"include_labels: {include_labels}, "
-        f"max_deadline: {max_deadline}, min_deadline: {min_dealine}, "
+        f"max_deadline: {max_deadline}, min_deadline: {min_deadline}, "
         f"skip: {skip}, limit: {limit}"
     )
 
@@ -407,10 +432,23 @@ async def get_task(
             query['status'] = task_status
         if include_labels:
             query['label'] = {"$in": include_labels}
+
+        deadline_query: dict[str, datetime] = {}
+
         if max_deadline:
-            query['deadline'] = {"$lte": max_deadline}
-        if min_dealine:
-            query.setdefault('deadline', {})["$gte"] = min_dealine
+            # adding to 'max_deadline' default time
+            # this step may be not clear, but this needed to be done
+            # because MongoDB can store only dates with time
+            # and user cannot pass date already with the default time, it would be hella strange approach
+            max_deadline_datetime = datetime.combine(max_deadline, datetime.min.time())
+            deadline_query['$lte'] = max_deadline_datetime
+        if min_deadline:
+            # the same as in 'max_deadline'
+            min_deadline_datetime = datetime.combine(min_deadline, datetime.min.time())
+            deadline_query['$gte'] = min_deadline_datetime
+
+        if deadline_query:
+            query['deadline'] = deadline_query
 
         collection = db.get_collection("tasks")
         cursor = collection.find(query).skip(skip).limit(limit)
