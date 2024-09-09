@@ -1,7 +1,7 @@
 import logging
 import logging.config
 
-
+# TODO: Boilerplate of Sensitive Data Filter for the future
 # class SensitiveDataFilter(logging.Filter):
 #    def __init__(self, sensitive_words):
 #        super().__init__()
@@ -40,7 +40,7 @@ LOGGING_CONFIG = {
             "class": "logging.FileHandler",
             "formatter": "standard",
             "level": "DEBUG",
-            "filename": "app.log",
+            "filename": "/logs_output/app.log",
         },
     },
     "loggers": {
