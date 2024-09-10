@@ -44,6 +44,7 @@ WazowskiList employs two GitHub Actions pipelines to streamline development and 
 - **Actions:**
   - Pull the latest code from the `dev` branch
   - Set up the environment and dependencies
+  - Execute pre-commit hooks
   - Execute the unit tests using Pytest
 
 ##### Release Pipeline
