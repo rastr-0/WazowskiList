@@ -36,7 +36,7 @@ jobs:
       # example: .../refs/tags/v1.0.0 --> 1.0.0
       - name: Extract version from the tag
         id: extract_version
-        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\}" >> "$GITHUB_OUTPUT"
 
       # building a Docker image and storing it in the GitHub Container Registry
       - name: Build Docker image
