@@ -2,7 +2,7 @@
 # in GitHub Actions pipeline for testing the application
 
 DOCKER_IMAGE_NAME=fastapi-app-dev
-COMPOSE_FILE=docker-compose.dev.yml
+COMPOSE_FILE=docker-compose.yml
 COMPOSE_PROJECT_NAME=fastapi_ci
 
 build:
