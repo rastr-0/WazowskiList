@@ -16,7 +16,7 @@ from datetime import timedelta, datetime
 from os import getenv
 from typing import Any, Annotated
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
 """
 Authentication Management Endpoints

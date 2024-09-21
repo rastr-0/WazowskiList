@@ -16,7 +16,7 @@ from typing import Any, Annotated
 import uuid
 from datetime import datetime, date
 
-router = APIRouter()
+router = APIRouter(prefix="/task-related", tags=["task-related"])
 
 """
 Task Management Endpoints
