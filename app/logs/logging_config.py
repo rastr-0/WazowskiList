@@ -59,9 +59,15 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "propagate": False,
         },
+        "RemindEndpoints": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
     }
 }
 
 database_logger = logging.getLogger("Database")
 auth_logger = logging.getLogger("AuthEndpoints")
 tasks_logger = logging.getLogger("TasksEndpoints")
+reminder_logger = logging.getLogger("RemindEndpoints")
