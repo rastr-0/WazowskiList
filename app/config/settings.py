@@ -2,6 +2,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
+class CelerySettings(BaseSettings):
+    """
+    Class representing basic Celery settings
+
+    Attributes:
+        CELERY_BROKER_URL: Address of the broker (reddis)
+        CELERY_RESULT_BACKEND: Address of the result back (information about execution process of the tasks)
+    """
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    # Celery configuration
+    CELERY_BROKER_URL: str = Field(default="celery_broker_url")
+    CELERY_RESULT_BACKEND: str = Field(default="celery_result_backend")
+
+
 class ServerSettings(BaseSettings):
     """
     Class representing 2 basic server settings. Inherits from Pydantic BaseSettings.
@@ -43,7 +58,7 @@ class DatabaseSettings(BaseSettings):
                 f"{self.MONGO_HOST}:{self.MONGO_PORT}/{self.MONGO_DB}")
 
 
-class Settings(ServerSettings, DatabaseSettings):
+class Settings(ServerSettings, DatabaseSettings, CelerySettings):
     pass
 
 
