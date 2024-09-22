@@ -16,7 +16,7 @@ from app.reminder_sending_logic.scheduler import schedule_reminder
 from typing import Any, Annotated
 import uuid
 
-router = APIRouter(prefix="/reminders", tags=["reminders"])
+router = APIRouter(prefix="api/schedule", tags=["reminders"])
 
 
 @router.post("/", response_model=ReminderResponse)
