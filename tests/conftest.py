@@ -63,7 +63,7 @@ def jwt_token(client, mock_user_data):
     def _generate_token(data_key: str) -> str:
         user_data = mock_user_data[data_key]
         response = client.post(
-            url="/token",
+            url="/api/auth/token",
             data={
                 "username": user_data['username'],
                 "password": user_data['password']
@@ -103,7 +103,7 @@ def create_task(client: TestClient, jwt_token, mock_task_data: dict) -> dict:
     token = jwt_token('updated')
 
     response = client.post(
-        url="/tasks",
+        url="/api/todo/tasks",
         json={
             "title": mock_task_data['title'],
             "description": mock_task_data['description'],

@@ -4,7 +4,7 @@ from starlette.testclient import TestClient
 def test_create_user(client: TestClient, mock_user_data: dict) -> None:
     """Test creating a new user"""
     response = client.post(
-        url="/register",
+        url="/api/auth/register",
         json=mock_user_data["basic"]
     )
 
@@ -18,7 +18,7 @@ def test_create_user(client: TestClient, mock_user_data: dict) -> None:
 def test_login_for_access_token(client: TestClient, mock_user_data: dict) -> None:
     """Test creating an access token"""
     response = client.post(
-        url="/token",
+        url="/api/auth/token",
         data={
             "username": mock_user_data['basic']['username'],
             "password": mock_user_data['basic']['password']
@@ -35,7 +35,7 @@ def test_update_current_user(client: TestClient, mock_user_data: dict, jwt_token
     """Test updating a current user"""
     token = jwt_token("basic")
     response = client.post(
-        url="/users/me",
+        url="/api/auth/users/me",
         json={
             "username": mock_user_data['updated']['username'],
             "password": mock_user_data['updated']['password'],
@@ -56,7 +56,7 @@ def test_get_current_user(client: TestClient, jwt_token) -> None:
     """Test getting a current user"""
     token = jwt_token("updated")
     response = client.get(
-        url='/users/me',
+        url="/api/auth/users/me",
         headers={"Authorization": f"Bearer {token}"}
     )
 
