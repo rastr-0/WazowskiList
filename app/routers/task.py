@@ -16,7 +16,7 @@ from typing import Any, Annotated
 import uuid
 from datetime import datetime, date
 
-router = APIRouter(prefix="api/todo", tags=["task-related"])
+router = APIRouter(prefix="/api/todo", tags=["task-related"])
 
 """
 Task Management Endpoints
@@ -298,7 +298,7 @@ async def delete_task(
     tasks_logger.info(
         f"Task successfully deleted (task_id: {task_id}) by user: {current_user.username}"
     )
-    return {"detail": "Task was successfully deleted"}
+    return {"detail": f"Task (id: {task_id}) was successfully deleted"}
 
 
 @router.get("/tasks", response_model=TaskCollection)
