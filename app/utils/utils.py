@@ -15,6 +15,11 @@ from jose import jwt
 from jose.exceptions import JWEInvalidAuth
 # pydantic
 from pydantic import BaseModel
+# sending emails
+import smtplib
+from email.mime.text import MIMEText
+# settings
+from app.config.settings import settings
 # other modules
 from datetime import timedelta, datetime, timezone
 from dotenv import load_dotenv
@@ -190,3 +195,15 @@ def convert_to_task_response(task: dict) -> TaskResponse:
         created_at=task['created_at'],
         updated_at=task['updated_at']
     )
+
+
+def send_email(to: str, subject: str, body: str) -> None:
+    msg = MIMEText(body)
+    msg['From'] = settings.SMTP_USER
+    msg['Subject'] = subject
+    msg['To'] = to
+
+    with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+        if settings.SMTP_USER and settings.SMTP_PASSWORD:
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.sendmail(settings.SMTP_USER, to, msg.as_string())

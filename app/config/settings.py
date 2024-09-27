@@ -1,3 +1,5 @@
+from email.policy import default
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
@@ -15,6 +17,24 @@ class CelerySettings(BaseSettings):
     # Celery configuration
     CELERY_BROKER_URL: str = Field(default="celery_broker_url")
     CELERY_RESULT_BACKEND: str = Field(default="celery_result_backend")
+
+
+class SMTPSettings(BaseSettings):
+    """
+    Class representing basic SMTP settings
+
+    Attributes:
+        SMTP_SERVER: Ip address of the SMTP server
+        SMTP_PORT: Port of the SMTP server
+        SMTP_USER: username from which account will be sent emails
+        SMTP_PASSWORD: Password of user from which account will be sent emails
+    """
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    SMTP_SERVER: str = Field(default="smtp")
+    SMTP_PORT: str = Field(default="smtp_port")
+    SMTP_USER: str = Field(default="smtp_user")
+    SMTP_PASSWORD: str = Field(default="smtp_password")
 
 
 class ServerSettings(BaseSettings):
@@ -58,7 +78,7 @@ class DatabaseSettings(BaseSettings):
                 f"{self.MONGO_HOST}:{self.MONGO_PORT}/{self.MONGO_DB}")
 
 
-class Settings(ServerSettings, DatabaseSettings, CelerySettings):
+class Settings(ServerSettings, DatabaseSettings, CelerySettings, SMTPSettings):
     pass
 
 
