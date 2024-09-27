@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from app.config import settings
+from app.config.settings import settings
 from app.logs.logging_config import database_logger
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
