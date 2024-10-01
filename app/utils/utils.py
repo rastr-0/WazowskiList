@@ -20,12 +20,16 @@ import smtplib
 from email.mime.text import MIMEText
 # settings
 from app.config.settings import settings
+# celery config
+from app.config.celery import celery_app
 # other modules
 from datetime import timedelta, datetime, timezone
 from dotenv import load_dotenv
 from os import getenv
 from typing import Annotated
 import json
+
+#TODO: add `get_task_by_id` functionality!!!
 
 load_dotenv()
 
@@ -197,7 +201,8 @@ def convert_to_task_response(task: dict) -> TaskResponse:
     )
 
 
-def send_email(to: str, subject: str, body: str) -> None:
+@celery_app.task
+def send_email(to: str, subject: str, body: str):
     msg = MIMEText(body)
     msg['From'] = settings.SMTP_USER
     msg['Subject'] = subject
