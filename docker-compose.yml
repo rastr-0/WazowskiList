@@ -6,8 +6,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - .:/docker_app
     working_dir: /docker_app
     ports:
       - "${DEVELOPMENT_SERVER_PORT}:8000"
@@ -17,8 +15,12 @@ services:
       - PYTHONPAH=/docker_app
     depends_on:
       - mongodb
+      - redis
+      - celery-worker
     networks:
       - app-network
+    volumes:
+      - .:/docker_app
 
   mongodb:
     container_name: mongodb-dev
@@ -32,6 +34,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: "redis:alpine"
+    env_file:
+      - .env
+    networks:
+      - app-network
+    ports:
+      - "6379:6379"
+
+  celery-worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A app.services.scheduler worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - .:/docker_app
 
 networks:
   app-network:
