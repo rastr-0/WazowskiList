@@ -5,7 +5,8 @@ from app.config.settings import settings
 celery_app = Celery(
     "app",
     broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND
+    backend=settings.CELERY_RESULT_BACKEND,
+    include=["app.services.scheduler"]
 )
 
 celery_app.conf.timezone = 'UTC'
