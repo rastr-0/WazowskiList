@@ -1,18 +1,6 @@
 import logging
 import logging.config
 
-# TODO: Boilerplate of Sensitive Data Filter for the future
-# class SensitiveDataFilter(logging.Filter):
-#    def __init__(self, sensitive_words):
-#        super().__init__()
-#        self.sensitive_words = sensitive_words
-
-#    def filter(self, record: LogRecord):
-#        message = record.getMessage()
-#        for word in self.sensitive_words:
-#            message = message.replace(word, "*" * len(word))
-#        record.msg = message
-
 
 def setup_logging(default_level=logging.INFO, log_config: dict = None):
     if log_config:
