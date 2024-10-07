@@ -11,10 +11,17 @@ from app.database.database import motor_db
 from app.logs.logging_config import auth_logger
 # utils
 import app.utils.utils as utils
+from utils.utils import get_user_by_username
 # other modules
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from os import getenv
 from typing import Any, Annotated
+
+# TODO: Implement custom exceptions for cases such as
+#   - user already exists in the database
+#   - task already exists in the database
+#   - reminder already exists in the database
+
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -92,8 +99,6 @@ async def create_user(
         user: CreateUser,
         db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
-    # TODO: Check if user with the same `username` field already exist
-    #   if so, don't add user and throw an Exception
     """Endpoint for creating new user
 
     Args:
@@ -132,11 +137,16 @@ async def create_user(
         email=user.email,
         full_name=user.full_name,
         hashed_password=utils.get_hashed_password(user.password),
-        created_at=datetime.utcnow()
+        created_at=datetime.now()
     )
     try:
         collection = db.get_collection("users")
-        await collection.insert_one(db_user.model_dump())
+        # check if user with the same username already exists in the database
+        if get_user_by_username(db_user.username, db) is not None:
+            await collection.insert_one(db_user.model_dump())
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail=f"User with the same username already exists in the database!")
         auth_logger.info(f"New user: {db_user.username} was successfully registered")
     except Exception as e:
         auth_logger.exception(f"Failed to register new user: {db_user.username}")
@@ -154,6 +164,7 @@ async def update_user(
 ) -> Any:
     # TODO:
     #  FIX: User's info updating works only when all fields are passed, otherwise, doesn't work
+    #   the right implementation is already in the 'update_reminder' endpoint, the same logic must be here
 
     """Endpoint for updating existing user's information
 
@@ -232,7 +243,7 @@ async def update_user(
             username=updated_user.get("username"),
             email=updated_user.get("email"),
             created_at=updated_user.get("created_at"),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
     else:
         auth_logger.exception(f"Failed to find user: {current_user.username} for update")
