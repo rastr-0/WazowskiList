@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.task import Task
 from datetime import datetime, date
+from app.utils.utils import convert_to_optional
 
 
 class CreateTask(BaseModel):
@@ -43,11 +44,6 @@ class CreateTask(BaseModel):
             ]
         }
     )
-
-
-def convert_to_optional(schema):
-    from typing import Optional
-    return {k: Optional[v] for k, v in schema.__annotations__.items()}
 
 
 class UpdateTask(CreateTask):
