@@ -14,17 +14,12 @@ import app.utils.utils as utils
 from utils.utils import get_user_by_username
 # custom exceptions
 from app.exceptions.custom_exceptions import (
-    RegisterUserException, UpdateUserException, UpdateUserDependenciesException, FindUserException)
+    RegisterUserException, UpdateUserException, UpdateUserDependenciesException,
+    UserNotFoundException, UserExistsException)
 # other modules
 from datetime import timedelta, datetime, timezone
 from os import getenv
 from typing import Any, Annotated
-
-# TODO: Implement custom exceptions for cases such as
-#   - user already exists in the database
-#   - task already exists in the database
-#   - reminder already exists in the database
-
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -114,7 +109,8 @@ async def create_user(
             the purpose of avodining IDE warnings
 
     Raises:
-        HTTPException (status_code=500): If new user cannot be inserted into the database
+        UserExistsException: if user with the same username already exists
+        RegisterUserException: if user cannot be registered
 
     Dependency functions:
         see module-level docsting on top
@@ -148,8 +144,7 @@ async def create_user(
         if get_user_by_username(db_user.username, db) is not None:
             await collection.insert_one(db_user.model_dump())
         else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail=f"User with the same username already exists in the database!")
+            raise UserExistsException(user.username)
         auth_logger.info(f"New user: {db_user.username} was successfully registered")
     except Exception:
         raise RegisterUserException(db.username)
@@ -216,7 +211,7 @@ async def update_user(
         raise UpdateUserException(current_user.username)
 
     if result.matched_count == 0:
-        raise FindUserException(current_user.username, operation_type="update")
+        raise UserNotFoundException(current_user.username, operation_type="update")
     # find user by the new username if was passed
     # otherwise find user by the already containing in the database username
     updated_user = await collection.find_one(
@@ -243,7 +238,7 @@ async def update_user(
             updated_at=datetime.now(timezone.utc)
         )
     else:
-        raise FindUserException(current_user.username, operation_type="update")
+        raise UserNotFoundException(current_user.username, operation_type="update")
 
 
 @router.get("/users/me", response_model=UserResponse)
