@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
+from app.utils.utils import convert_to_optional
 
 
 class CreateReminder(BaseModel):
@@ -25,3 +26,10 @@ class CreateReminder(BaseModel):
 
 class ReminderResponse(CreateReminder):
     pass
+
+
+class UpdateReminder(CreateReminder):
+    # convert_to_optional converts all the fields of CreateReminder to optional
+    # and set them to __annotations__ of UpdateReminder class
+    # by using this approach we don't duplicate code
+    __annotations__ = convert_to_optional(CreateReminder)
