@@ -1,71 +1,76 @@
-from app.logs.logging_config import auth_logger
-from app.logs.logging_config import tasks_logger
+from app.logs.logging_config import auth_logger, tasks_logger, message_broker_logger, database_logger
 
 
-# authentication related exceptions
-class RegisterUserException(Exception):
+# General Exception Base Class
+class AppException(Exception):
+    def __init__(self, logger, message: str):
+        logger.exception(message)
+        super().__init__(message)
+
+
+# Authentication related exceptions
+class RegisterUserException(AppException):
     def __init__(self, username: str):
-        auth_logger.exception(f"Error inserting new user in the database: {username}")
-        super().__init__(f"Failed to register new user: {username}")
+        message = f"Failed to register new user: {username}"
+        super().__init__(auth_logger, message)
 
 
-class UserExistsException(Exception):
+class UserExistsException(AppException):
     def __init__(self, username: str):
-        auth_logger.exception(f"User with the same username: {username} already exists in the database")
-        super().__init__(f"User with the same username already registered")
+        message = f"User with the same username already registered: {username}"
+        super().__init__(auth_logger, message)
 
 
-class UserNotFoundException(Exception):
+class UserNotFoundException(AppException):
     def __init__(self, username: str, operation_type: str):
-        auth_logger.exception(f"Failed to find user: {username} for the given operation: {operation_type}")
-        super().__init__(f"Failed to find user: {username}")
+        message = f"Failed to find user: {username} for operation: {operation_type}"
+        super().__init__(auth_logger, message)
 
 
-class UpdateUserException(Exception):
+class UpdateUserException(AppException):
     def __init__(self, username: str):
-        auth_logger.exception(f"Failed updating user: {username}")
-        super().__init__(f"Failed updating user: {username}")
+        message = f"Failed to update user: {username}"
+        super().__init__(auth_logger, message)
 
 
-class UpdateUserDependenciesException(Exception):
+class UpdateUserDependenciesException(AppException):
     def __init__(self, current_username: str, updated_username: str):
-        auth_logger.info(f"Failed to update tasks dependencies for user: "
-                         f"{current_username}(old) --> {updated_username}(new)")
-        super().__init__("Some dependencies were not properly updated for new username")
+        message = f"Failed to update task dependencies for user: {current_username} -> {updated_username}"
+        super().__init__(auth_logger, message)
 
 
-# tasks related exceptions
-class AddTaskException(Exception):
-    def __init__(self, user_triggered_operation, task_name: str):
-        tasks_logger.exception(f"Error inserting new task in the database by user: {user_triggered_operation}")
-        super().__init__(f"Failed adding new task")
+# Task related exceptions
+class AddTaskException(AppException):
+    def __init__(self, user_triggered_operation: str, task_name: str):
+        message = f"Failed to add task: {task_name}, triggered by user: {user_triggered_operation}"
+        super().__init__(tasks_logger, message)
 
 
-class InvalidUUIDException(Exception):
+class InvalidUUIDException(AppException):
     def __init__(self, user_triggered_operation: str, task_id: str):
-        tasks_logger.error(f"Invalid UUID format for task_id: {task_id} by user: {user_triggered_operation}")
-        super().__init__(f"Invalid id provided for the task")
+        message = f"Invalid UUID for task_id: {task_id}, triggered by user: {user_triggered_operation}"
+        super().__init__(tasks_logger, message)
 
 
-class BadUpdateRequestException(Exception):
+class BadUpdateRequestException(AppException):
     def __init__(self, user_triggered_operation: str, task_id: str):
-        tasks_logger.warning(
-            f"No fields to update provided for task_id: {task_id} by user: {user_triggered_operation}"
-        )
-        super().__init__("No fields to update provided")
+        message = f"No fields to update for task_id: {task_id}, triggered by user: {user_triggered_operation}"
+        super().__init__(tasks_logger, message)
 
 
-class TaskNotFoundException(Exception):
+class TaskNotFoundException(AppException):
     def __init__(self, user_triggered_operation: str, task_id: str):
-        tasks_logger.warning(
-            f"Task not found (task_id: {task_id}; user: {user_triggered_operation})"
-        )
-        super().__init__("Task not found")
+        message = f"Task not found (task_id: {task_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(tasks_logger, message)
 
 
-class UpdateTaskException(Exception):
+class UpdateTaskException(AppException):
     def __init__(self, user_triggered_operation: str, task_id: str):
-        tasks_logger.logger(
-            f"Task not updated (task_id: {task_id}; user: {user_triggered_operation})"
-        )
-        super().__init__("Task was not updated")
+        message = f"Failed to update task (task_id: {task_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(tasks_logger, message)
+
+
+# Database and Message-Broker related exceptions
+class CreateConnectionException(AppException):
+    def __init__(self, msg: str):
+        super().__init__(database_logger, msg)
