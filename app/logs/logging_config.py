@@ -37,6 +37,11 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "propagate": False,
         },
+        "MessageBroker": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "AuthEndpoints": {
             "handlers": ["console", "file"],
             "level": "INFO",
@@ -59,3 +64,4 @@ database_logger = logging.getLogger("Database")
 auth_logger = logging.getLogger("AuthEndpoints")
 tasks_logger = logging.getLogger("TasksEndpoints")
 reminder_logger = logging.getLogger("RemindEndpoints")
+message_broker_logger = logging.getLogger("RemindEndpoints")

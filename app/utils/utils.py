@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.database.database import motor_db
 # pydantic models
 from app.schemas.task import TaskResponse
+from app.models.reminder import Reminder
 # password hashing
 from passlib.context import CryptContext
 # models
@@ -15,21 +16,13 @@ from jose import jwt
 from jose.exceptions import JWEInvalidAuth
 # pydantic
 from pydantic import BaseModel
-# sending emails
-import smtplib
-from email.mime.text import MIMEText
-# settings
-from app.config.settings import settings
-# celery config
-from app.config.celery import celery_app
 # other modules
+import uuid
 from datetime import timedelta, datetime, timezone
 from dotenv import load_dotenv
 from os import getenv
 from typing import Annotated
 import json
-
-#TODO: add `get_task_by_id` functionality!!!
 
 load_dotenv()
 
@@ -79,7 +72,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return jwt.encode(json.loads(json_data), getenv("SECRET_KEY"))
 
 
-async def get_user(username: str, db: AsyncIOMotorDatabase) -> User | None:
+async def get_user_by_username(username: str, db: AsyncIOMotorDatabase) -> User | None:
     """Function for getting user by its username from the database
 
     Args:
@@ -119,7 +112,7 @@ async def authenticate_user(username: str, password: str, db: AsyncIOMotorDataba
     Returns:
         bool | User: An instance of the User class if verified, otherwise False
     """
-    user = await get_user(username, db)
+    user = await get_user_by_username(username, db)
     if not user or not verify_password(password, user.hashed_password):
         return False
     return user
@@ -155,13 +148,22 @@ async def get_current_user(
         token_data = TokenData(username=username)
     except JWEInvalidAuth:
         raise credential_excepttion
-    user = await get_user(username=token_data.username, db=db)
+    user = await get_user_by_username(username=token_data.username, db=db)
     if user is None:
         raise credential_excepttion
     return user
 
 
-async def update_username_dependencies(old_username: str, new_username: str, db: AsyncIOMotorDatabase):
+def convert_to_optional(schema):
+    from typing import Optional
+    return {k: Optional[v] for k, v in schema.__annotations__.items()}
+
+
+async def update_username_dependencies(
+        old_username: str,
+        new_username: str,
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
+):
     """Update dependencies in the `tasks` database collection from old owner's username to the new
 
     Args:
@@ -201,14 +203,31 @@ def convert_to_task_response(task: dict) -> TaskResponse:
     )
 
 
-@celery_app.task
-def send_email(to: str, subject: str, body: str):
-    msg = MIMEText(body)
-    msg['From'] = settings.SMTP_USER
-    msg['Subject'] = subject
-    msg['To'] = to
+async def get_task_by_id(
+        task_id: uuid.UUID,
+        current_user: User,
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
+) -> str | None:
+    """
+    Get task by its ID
 
-    with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
-        if settings.SMTP_USER and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_USER, to, msg.as_string())
+    Args:
+        task_id (UUID4): ID of the task
+        current_user (User): user data for validating tasks owners name with actual user performing request
+        db (AsyncIOMotorDatabase): The database connection instance
+    Returns:
+        str | None: Name of the task if task was found, otherwise, None
+    """
+    collection = db.get_collection("tasks")
+    try:
+        task = await collection.find_one({"id": task_id})
+        task_name = task.get("name")
+        # validating if user performing task is actually owning the task
+        if task.get("username") == current_user.username:
+            return task_name
+    except Exception as _:
+        return None
+
+
+def make_date_humanitic(ugly_date: datetime) -> str:
+    return ugly_date.strftime("%m/%d/%Y, %H:%M")
