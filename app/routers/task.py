@@ -11,12 +11,15 @@ from app.database.database import motor_db
 from app.utils.utils import get_current_user, convert_to_task_response
 # logs
 from app.logs.logging_config import tasks_logger
+# custom exceptions
+from app.exceptions.custom_exceptions import (AddTaskException, BadUpdateRequestException,
+                                              InvalidUUIDException, TaskNotFoundException, UpdateTaskException)
 # other modules
 from typing import Any, Annotated
 import uuid
 from datetime import datetime, date
 
-router = APIRouter()
+router = APIRouter(prefix="/api/todo", tags=["task-related"])
 
 """
 Task Management Endpoints
@@ -50,10 +53,10 @@ async def create_task(
     Returns:
         TaskResponse(*): Pydantic model with new added data to the database
         (*)`Any` as a response type of the function is specified only for
-            the purpose of avodining IDE warnings
+            the purpose of avoiding IDE warnings
 
     Raises:
-        HTTPException (status_code=500): if new task cannot be inserted into the database
+        AddTaskException: if new task cannot be added
 
     Dependency Functions:
         see module-level docstring on top
@@ -102,12 +105,9 @@ async def create_task(
         collection = db.get_collection("tasks")
         await collection.insert_one(db_task.model_dump())
         tasks_logger.info(f"New task was successfully inserted by user: {current_user.username}")
-    except Exception as e:
-        tasks_logger.exception(f"Error inserting new task in the database by user: {current_user.username}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error inserting new task in the database: {e}"
-        )
+    except Exception:
+        raise AddTaskException(current_user.username, task.title)
+
     return convert_to_task_response(db_task.model_dump())
 
 
@@ -130,7 +130,10 @@ async def update_task(
         TaskResponse: Pydantic model with updated data.
 
     Raises:
-        HTTPException (status_code=400): If task_update is empty.
+        BadUpdateRequestException: if no data were provide for update
+        InvalidUUIDException: if invalid UUID of the task was provided
+        UpdateTaskException: if task was not updated
+        TaskNotFoundException: if task was not found
 
     Dependency Functions:
         documented in `common management endpoints->common dependencies (1 and 2)` on top of the file
@@ -165,15 +168,7 @@ async def update_task(
     update_data = {k: v for k, v in task_update.model_dump().items() if v is not None}
 
     if not update_data:
-        tasks_logger.warning(
-            f"No fields to update provided for task_id: {task_id} by user: {current_user.username}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update provided"
-        )
-
-    print(update_data)
+        raise BadUpdateRequestException(current_user.username, task_id)
 
     # Tasks collection in the database
     collection = db.get_collection("tasks")
@@ -181,14 +176,8 @@ async def update_task(
     # Update task by task_id and owner
     try:
         task_uuid = uuid.UUID(task_id)
-    except ValueError as e:
-        tasks_logger.error(
-            f"Invalid UUID format for task_id: {task_id} by user: {current_user.username}. Error: {e}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid UUID format"
-        )
+    except ValueError:
+        raise InvalidUUIDException(current_user.username, task_id)
 
     # Check if 'deadline' is a date and convert it to datetime if needed
     if 'deadline' in update_data:
@@ -207,44 +196,19 @@ async def update_task(
             {"id": task_uuid, "owner": current_user.username},
             {"$set": update_data}
         )
-    # TODO: update this general Exception to more detailed one
-    except Exception as e:
-        tasks_logger.error(
-            f"Task was not updated (task_id: {task_id}; user: {current_user.username}). Error: {e}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Task was not updated"
-        )
+    except Exception:
+        raise UpdateTaskException(current_user.username, task_id)
 
     if result.matched_count == 0:
-        tasks_logger.warning(
-            f"Task not found for update (task_id: {task_id}; user: {current_user.username})"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
+        raise TaskNotFoundException(current_user.username, task_id)
 
     if result.modified_count == 0:
-        tasks_logger.error(
-            f"Failed to update task data (task_id: {task_id}; user: {current_user.username})"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update task data"
-        )
+        raise UpdateTaskException(current_user.username, task_id)
 
     updated_task: dict = await collection.find_one({"id": task_uuid})
 
     if not updated_task:
-        tasks_logger.error(
-            f"Updated task not found in the database (task_id: {task_id}; user: {current_user.username})"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Updated task not found"
-        )
+        raise TaskNotFoundException(current_user.username, task_id)
 
     tasks_logger.info(
         f"Task successfully updated (task_id: {task_id}; user: {current_user.username})"
@@ -270,7 +234,7 @@ async def delete_task(
         dict: Message about successful deleting the task
 
     Raises:
-        HTTPException (status_code=404): if task was failed to be deleted
+        TaskNotFoundException: if task not found to be deleted
 
     Dependency Functions:
         see module-level docstring on top
@@ -287,18 +251,12 @@ async def delete_task(
         }
     )
     if result.deleted_count == 0:
-        tasks_logger.warning(
-            f"Failed to delete task (task_id: {task_id}) by user: {current_user.username}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Failed to delete task with following id: {task_id}"
-        )
+        raise TaskNotFoundException(current_user.username, task_id)
 
     tasks_logger.info(
         f"Task successfully deleted (task_id: {task_id}) by user: {current_user.username}"
     )
-    return {"detail": "Task was successfully deleted"}
+    return {"detail": f"Task (id: {task_id}) was successfully deleted"}
 
 
 @router.get("/tasks", response_model=TaskCollection)

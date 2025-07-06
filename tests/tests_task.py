@@ -26,7 +26,7 @@ def test_update_task(client: TestClient, jwt_token, create_task: dict) -> None:
         "deadline": "2024-12-15"
     }
     response = client.put(
-        url=f"/tasks/{task_id}",
+        url=f"/api/todo/tasks/{task_id}",
         json=update_data,
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -47,7 +47,7 @@ def test_get_task(client: TestClient, jwt_token) -> None:
     token = jwt_token("updated")
 
     response = client.get(
-        url="/tasks",
+        url="/api/todo/tasks",
         headers={"Authorization": f"Bearer {token}"}
     )
 
@@ -71,7 +71,7 @@ def test_delete_task(client: TestClient, jwt_token, create_task: dict) -> None:
     task_id = create_task['id']
 
     response = client.delete(
-        url=f"/tasks/{task_id}",
+        url=f"/api/todo/tasks/{task_id}",
         headers={"Authorization": f"Bearer {token}"}
     )
 

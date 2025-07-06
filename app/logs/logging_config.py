@@ -1,18 +1,6 @@
 import logging
 import logging.config
 
-# TODO: Boilerplate of Sensitive Data Filter for the future
-# class SensitiveDataFilter(logging.Filter):
-#    def __init__(self, sensitive_words):
-#        super().__init__()
-#        self.sensitive_words = sensitive_words
-
-#    def filter(self, record: LogRecord):
-#        message = record.getMessage()
-#        for word in self.sensitive_words:
-#            message = message.replace(word, "*" * len(word))
-#        record.msg = message
-
 
 def setup_logging(default_level=logging.INFO, log_config: dict = None):
     if log_config:
@@ -49,6 +37,11 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "propagate": False,
         },
+        "MessageBroker": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "AuthEndpoints": {
             "handlers": ["console", "file"],
             "level": "INFO",
@@ -59,9 +52,16 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "propagate": False,
         },
+        "RemindEndpoints": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
     }
 }
 
 database_logger = logging.getLogger("Database")
 auth_logger = logging.getLogger("AuthEndpoints")
 tasks_logger = logging.getLogger("TasksEndpoints")
+reminder_logger = logging.getLogger("RemindEndpoints")
+message_broker_logger = logging.getLogger("RemindEndpoints")

@@ -11,12 +11,17 @@ from app.database.database import motor_db
 from app.logs.logging_config import auth_logger
 # utils
 import app.utils.utils as utils
+from utils.utils import get_user_by_username
+# custom exceptions
+from app.exceptions.custom_exceptions import (
+    RegisterUserException, UpdateUserException, UpdateUserDependenciesException,
+    UserNotFoundException, UserExistsException)
 # other modules
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from os import getenv
 from typing import Any, Annotated
 
-router = APIRouter()
+router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 """
 Authentication Management Endpoints
@@ -92,8 +97,6 @@ async def create_user(
         user: CreateUser,
         db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
-    # TODO: Check if user with the same `username` field already exist
-    #   if so, don't add user and throw an Exception
     """Endpoint for creating new user
 
     Args:
@@ -106,7 +109,8 @@ async def create_user(
             the purpose of avodining IDE warnings
 
     Raises:
-        HTTPException (status_code=500): If new user cannot be inserted into the database
+        UserExistsException: if user with the same username already exists
+        RegisterUserException: if user cannot be registered
 
     Dependency functions:
         see module-level docsting on top
@@ -132,17 +136,18 @@ async def create_user(
         email=user.email,
         full_name=user.full_name,
         hashed_password=utils.get_hashed_password(user.password),
-        created_at=datetime.utcnow()
+        created_at=datetime.now()
     )
     try:
         collection = db.get_collection("users")
-        await collection.insert_one(db_user.model_dump())
+        # check if user with the same username already exists in the database
+        if get_user_by_username(db_user.username, db) is not None:
+            await collection.insert_one(db_user.model_dump())
+        else:
+            raise UserExistsException(user.username)
         auth_logger.info(f"New user: {db_user.username} was successfully registered")
-    except Exception as e:
-        auth_logger.exception(f"Failed to register new user: {db_user.username}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error inserting new user in the database: {e}")
-
+    except Exception:
+        raise RegisterUserException(db.username)
     return db_user
 
 
@@ -154,6 +159,7 @@ async def update_user(
 ) -> Any:
     # TODO:
     #  FIX: User's info updating works only when all fields are passed, otherwise, doesn't work
+    #   the right implementation is already in the 'update_reminder' endpoint, the same logic must be here
 
     """Endpoint for updating existing user's information
 
@@ -168,7 +174,9 @@ async def update_user(
             the purpose of avodining IDE warnings
 
     Raises:
-         HTTPException (status_code=404): If the user update fails or the user is not found
+         UpdateUserException: if user cannot be inserted in the database
+         FindUserException: if user cannot be found
+         UpdateUserDependenciesException: if not all dependencies can be updated after changes in users' data
 
     Dependency Functions:
         see module-level docstring on top
@@ -199,13 +207,11 @@ async def update_user(
 
     try:
         result = await collection.update_one({"username": current_user.username}, {"$set": update_data})
-    except Exception as e:
-        auth_logger.exception(f"Failed updating user: {current_user.username}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Error updating given user: {e}")
+    except Exception:
+        raise UpdateUserException(current_user.username)
 
     if result.matched_count == 0:
-        auth_logger.exception(f"Failed to find user: {current_user.username} for update")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise UserNotFoundException(current_user.username, operation_type="update")
     # find user by the new username if was passed
     # otherwise find user by the already containing in the database username
     updated_user = await collection.find_one(
@@ -220,11 +226,8 @@ async def update_user(
                                                      db=db)
             auth_logger.info(f"Existing tasks dependencies were successfully updated to work with new username: "
                              f"{current_user.username} --> {update_user_data.username}")
-        except Exception as e:
-            auth_logger.exception(f"Failed to update tasks dependencies for user: "
-                                  f"{current_user.username}(old) --> {update_user_data.username}(new)")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail=f"Dependencies in tasks collection cannot be updated: {e}")
+        except Exception:
+            raise UpdateUserDependenciesException(current_user.username, update_user_data.username)
 
     if updated_user:
         auth_logger.info(f"Information for user: {current_user.username} was successfully updated")
@@ -232,11 +235,10 @@ async def update_user(
             username=updated_user.get("username"),
             email=updated_user.get("email"),
             created_at=updated_user.get("created_at"),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
     else:
-        auth_logger.exception(f"Failed to find user: {current_user.username} for update")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise UserNotFoundException(current_user.username, operation_type="update")
 
 
 @router.get("/users/me", response_model=UserResponse)

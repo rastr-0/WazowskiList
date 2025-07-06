@@ -1,9 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from app.config import settings
+from app.config.settings import settings
 from app.logs.logging_config import database_logger
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
 from pymongo.errors import OperationFailure
+# custom exceptions
+from app.exceptions.custom_exceptions import CreateConnectionException
 
 
 class Database:
@@ -41,10 +41,10 @@ class Database:
 
         except OperationFailure as e:
             database_logger.error(f"Failed to create or authenticate user: {str(e)}")
-            raise
+            raise CreateConnectionException("Failed to create or authenticate user")
         except Exception as e:
             database_logger.error(f"Failed to connect to the database: {str(e)}")
-            raise
+            raise CreateConnectionException("Failed to connect to the database")
 
     async def get_database(self) -> AsyncIOMotorDatabase:
         """Retrieve the active database instance"""
@@ -64,16 +64,3 @@ class Database:
 
 
 motor_db = Database()
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    """
-    Code before `yield`:
-        sets up database before actually starting taking requests
-    Code after `yield`:
-        cleans up the database right after the shutdown of the app
-    """
-    await motor_db.connect_and_init_db()
-    yield
-    await motor_db.close_db_connection()
