@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     environment:
-      - PYTHONPAH=/docker_app
+      - PYTHONPATH=/docker_app
     depends_on:
       - mongodb
       - redis
@@ -47,6 +47,7 @@ services:
   celery-worker:
     build: .
     container_name: celery_worker
+    working_dir: /docker_app
     command: celery -A app.services.scheduler worker --loglevel=info
     depends_on:
       - redis
