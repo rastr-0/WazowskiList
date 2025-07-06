@@ -11,7 +11,7 @@ from app.logs.logging_config import reminder_logger
 from app.models.reminder import Reminder
 from app.schemas.reminder import CreateReminder, ReminderResponse, UpdateReminder
 # uitls
-from app.utils.utils import get_current_user
+from app.utils.utils_models import get_current_user
 # scheduler
 from app.services.scheduler import schedule_reminder
 # redis

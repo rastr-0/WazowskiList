@@ -8,7 +8,7 @@ from app.schemas.task import CreateTask, UpdateTask, TaskResponse, TaskCollectio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.database.database import motor_db
 # utils
-from app.utils.utils import get_current_user, convert_to_task_response
+from app.utils.utils_models import get_current_user, convert_to_task_response
 # logs
 from app.logs.logging_config import tasks_logger
 # custom exceptions

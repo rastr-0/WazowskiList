@@ -4,7 +4,8 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.models.reminder import Reminder
 # utility
-from app.utils.utils import get_task_by_id, make_date_humanitic
+from app.utils.utils_models import get_task_by_id
+from app.utils.utils import make_date_humanitic
 # db
 from motor.motor_asyncio import AsyncIOMotorDatabase
 # sending emails

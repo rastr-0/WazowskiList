@@ -6,8 +6,6 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.database.database import motor_db
 # pydantic models
 from app.schemas.task import TaskResponse
-# password hashing
-from passlib.context import CryptContext
 # models
 from app.models.user import User
 # for JWT token encoding/decoding
@@ -15,6 +13,8 @@ from jose import jwt
 from jose.exceptions import JWEInvalidAuth
 # pydantic
 from pydantic import BaseModel
+# password hashing
+from passlib.context import CryptContext
 # other modules
 import uuid
 from datetime import timedelta, datetime, timezone
@@ -25,8 +25,12 @@ import json
 
 load_dotenv()
 
-myctx = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+myctx = CryptContext(schemes=['bcrypt'], deprecated='auto')
+
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    return myctx.verify(password, hashed_password)
 
 
 class Token(BaseModel):
@@ -36,14 +40,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-
-
-def verify_password(password: str, hashed_password: str) -> bool:
-    return myctx.verify(password, hashed_password)
-
-
-def get_hashed_password(password: str) -> str:
-    return myctx.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -153,11 +149,6 @@ async def get_current_user(
     return user
 
 
-def convert_to_optional(schema):
-    from typing import Optional
-    return {k: Optional[v] for k, v in schema.__annotations__.items()}
-
-
 async def update_username_dependencies(
         old_username: str,
         new_username: str,
@@ -226,7 +217,3 @@ async def get_task_by_id(
             return task_name
     except Exception as _:
         return None
-
-
-def make_date_humanitic(ugly_date: datetime) -> str:
-    return ugly_date.strftime("%m/%d/%Y, %H:%M")

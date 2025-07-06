@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from datetime import datetime
+from app.utils.utils import convert_to_optional
 
 
 class CreateUser(BaseModel):
@@ -60,11 +61,6 @@ class UserResponse(BaseModel):
 
 class UserResponseUpdate(UserResponse):
     updated_at: datetime
-
-
-def convert_to_optional(schema):
-    from typing import Optional
-    return {k: Optional[v] for k, v in schema.__annotations__.items()}
 
 
 class UpdateUser(CreateUser):

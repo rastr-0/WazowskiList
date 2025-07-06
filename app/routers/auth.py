@@ -10,8 +10,8 @@ from app.database.database import motor_db
 # logs
 from app.logs.logging_config import auth_logger
 # utils
-import app.utils.utils as utils
-from utils.utils import get_user_by_username
+from app.utils.utils import get_hashed_password
+import app.utils.utils_models as utils
 # custom exceptions
 from app.exceptions.custom_exceptions import (
     RegisterUserException, UpdateUserException, UpdateUserDependenciesException,
@@ -135,13 +135,13 @@ async def create_user(
         username=user.username,
         email=user.email,
         full_name=user.full_name,
-        hashed_password=utils.get_hashed_password(user.password),
+        hashed_password=get_hashed_password(user.password),
         created_at=datetime.now()
     )
     try:
         collection = db.get_collection("users")
         # check if user with the same username already exists in the database
-        if get_user_by_username(db_user.username, db) is not None:
+        if utils.get_user_by_username(db_user.username, db) is not None:
             await collection.insert_one(db_user.model_dump())
         else:
             raise UserExistsException(user.username)
