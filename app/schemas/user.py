@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, create_model
+from typing import Optional
 from datetime import datetime
-from app.utils.utils import convert_to_optional
 
 
 class CreateUser(BaseModel):
@@ -63,17 +63,10 @@ class UserResponseUpdate(UserResponse):
     updated_at: datetime
 
 
-class UpdateUser(CreateUser):
-    """
-    Pydantic model for updating users information. All fields are optional
-
-    Attributes:
-        username (str | None): New username for the user
-        password (str | None): New password for the user
-        email (EmailStr | None): New email for the user
-        full_name (str | None): New full name for the user
-    """
-    # convert_to_optional converts all the fields of CreateUser to optional
-    # and set them to __annotations__ of UpdateUser class
-    # by using this approach we don't duplicate code
-    __annotations__ = convert_to_optional(CreateUser)
+UpdateUser = create_model(
+    "UpdateUser",
+    **{
+        k: (Optional[v], None)
+        for k, v in CreateUser.__annotations__.items()
+    }
+)

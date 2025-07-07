@@ -108,7 +108,7 @@ async def create_reminder(
     return reminder_data
 
 
-@router.put("/reminder/{reminder_id}", response_model=ReminderResponse)
+@router.put("/{reminder_id}", response_model=ReminderResponse)
 async def update_reminder(
         reminder_id: str,
         reminder: UpdateReminder,
@@ -156,7 +156,7 @@ async def update_reminder(
     return updated_reminder
 
 
-@router.delete("/reminder/{reminder_id}", response_model=dict)
+@router.delete("/{reminder_id}", response_model=dict)
 async def delete_reminder(
         reminder_id: uuid.UUID
 ):
