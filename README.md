@@ -20,6 +20,7 @@ WazowskiList is a basic backend project built with FastAPI, providing RESTful AP
 - [REST requests examples](#rest-requests-examples-with-curl)
   - [Authentication related](#authentication-related-requests-examples)
   - [Task related](#task-related-requests-examples)
+- [ToDo](#todo-list)
 
 
 ### Features
@@ -217,3 +218,22 @@ curl -X DELETE "domain:port/api/core-app/tasks{id}"
   -H "accept: application/json"
   -H "Authorization: Bearer your_token"
 ```
+
+### ToDo List
+- Authentication
+  - [X] User registration
+  - [X] Access token generation (JWT)
+  - [X] Update user info (e.g. password, email)
+  - [X] Retrive user info (own profile)
+  - [ ] Role-based access control (e.g. admin, regular)
+  - [ ] OAuth2 with Google/GitHub
+- Task Management
+  - [X] Task creation
+  - [X] Task update
+  - [X] Task deletion
+  - [X] Get one or more tasks
+  - [ ] Task sharing with other users
+  - [ ] Task reminders
+- Security & Robustness
+  - [ ] Rate limiting
+  - [ ] More tests
