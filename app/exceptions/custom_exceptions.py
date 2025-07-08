@@ -74,3 +74,7 @@ class UpdateTaskException(AppException):
 class CreateConnectionException(AppException):
     def __init__(self, msg: str):
         super().__init__(database_logger, msg)
+
+
+class LoggingSetupException(Exception):
+    pass

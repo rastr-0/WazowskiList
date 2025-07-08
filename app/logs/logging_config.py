@@ -27,8 +27,9 @@ LOGGING_CONFIG = {
         "file": {
             "class": "logging.FileHandler",
             "formatter": "standard",
-            "level": "DEBUG",
-            "filename": "/logs_output/app.log",
+            "level": "INFO",
+            "mode": "a",
+            "filename": "./app.log",
         },
     },
     "loggers": {

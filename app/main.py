@@ -6,6 +6,17 @@ from contextlib import asynccontextmanager
 # routers
 from app.routers.auth import router as auth_router
 from app.routers.task import router as task_router
+from app.routers.reminder import router as remind_router
+# logging
+from app.logs.logging_config import setup_logging, LOGGING_CONFIG
+# custom exception for logger
+from app.exceptions.custom_exceptions import LoggingSetupException
+
+# setup logging
+try:
+    setup_logging(log_config=LOGGING_CONFIG)
+except Exception as e:
+    raise LoggingSetupException()
 
 
 @asynccontextmanager
@@ -27,3 +38,4 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(task_router)
+app.include_router(remind_router)
