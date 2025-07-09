@@ -8,6 +8,7 @@ from app.database.database import motor_db
 from app.schemas.task import TaskResponse
 # models
 from app.models.user import User
+from app.models.reminder import Reminder
 # for JWT token encoding/decoding
 from jose import jwt
 from jose.exceptions import JWEInvalidAuth
@@ -86,6 +87,8 @@ async def get_user_by_username(username: str, db: AsyncIOMotorDatabase) -> User 
         if user:
             return User(
                 username=user.get("username"),
+                email=user.get("email"),
+                full_name=user.get("full_name"),
                 hashed_password=user.get("hashed_password")
             )
     except Exception as e:
@@ -217,3 +220,22 @@ async def get_task_by_id(
             return task_name
     except Exception as _:
         return None
+
+
+def make_date_humanitic(ugly_date: datetime) -> str:
+    return ugly_date.strftime("%m/%d/%Y, %H:%M")
+
+
+async def prepare_email_body(
+        reminder: Reminder,
+        current_user: User,
+        db: AsyncIOMotorDatabase
+) -> str:
+    task = await get_task_by_id(reminder.task_id, current_user, db)
+    body = f"""
+    Hey, your deadline is coming soon for the following task: {task}
+    Deadline time: {make_date_humanitic(reminder.reminder_time)}
+
+    Your reminding message: {reminder.message}
+    """
+    return body

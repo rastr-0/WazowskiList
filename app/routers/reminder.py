@@ -1,4 +1,5 @@
 # FastAPI models
+import time
 from fastapi import APIRouter, Depends, HTTPException, status
 # models
 from app.models.user import User
@@ -12,10 +13,9 @@ from app.models.reminder import Reminder
 from app.schemas.reminder import CreateReminder, ReminderResponse, UpdateReminder
 # uitls
 from app.utils.utils_models import get_current_user
+from app.utils.utils_models import prepare_email_body
 # scheduler
 from app.services.scheduler import schedule_reminder
-# redis
-from app.config.redis import redis
 from aioredis import Redis
 # other modules
 from typing import Any, Annotated
@@ -44,8 +44,7 @@ async def create_reminder(
         reminder: CreateReminder,
         task_id: str,
         current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
-        message_broker: Annotated[Redis, Depends(redis.get_redis())]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
     """Endpoint for creating a reminder for existing task
 
@@ -54,7 +53,7 @@ async def create_reminder(
         task_id (str): Task ID for which reminder will be created
         current_user (User): User that is performing this request with his JWT token
         db (AsyncIOMotorDatabase): Database connection instance
-        message_broker (Redis): Redis connection instance
+        # message_broker (Redis): Redis connection instance
 
     Returns:
         ReminderResponse: Pydantic model with data added to Redis
@@ -84,14 +83,15 @@ async def create_reminder(
         task_id=uuid.UUID(task_id),
         user_id=current_user.id,
         user_email=current_user.email,
+        # TODO: implement reminder time by default as a deadline - 1 hour
+        #   if not given any other specific time
         reminder_time=reminder.reminder_time,
         message=reminder.message
     )
     try:
-        # store reminder in Redis
-        await message_broker.set(str(reminder_data.task_id), reminder_data.model_dump_json())
-        # schedule the reminding email to be sent
-        await schedule_reminder(reminder_data, reminder_data.task_id, current_user, db)
+        email_body = await prepare_email_body(reminder_data, current_user, db)
+        # schedule the email to be sent
+        schedule_reminder.delay(str(reminder_data.user_email), email_body)
 
         reminder_logger.info(
             f"New reminder was successfully inserted in Reddis by user: {current_user.username}"
@@ -113,7 +113,9 @@ async def update_reminder(
         reminder_id: str,
         reminder: UpdateReminder,
         current_user: Annotated[User, Depends(get_current_user)],
-        message_broker: Annotated[Redis, Depends(redis.get_redis())]
+        # message_broker depends on the instance of redis,
+        # because this object is callable and implements __call__ method
+        # message_broker: Annotated[Redis, Depends(redis)]
 ) -> Any:
     """Endpoint for updating an existing reminder
 
@@ -131,29 +133,14 @@ async def update_reminder(
     Raises:
         HTTPException (status_code=404): if reminder with given ID was not found
     """
-    existing_reminder = await message_broker.get(reminder_id)
+    # existing_reminder = await message_broker.get(reminder_id)
 
-    if not existing_reminder:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Reminder was not found in Redis. Request by: {current_user.username}"
-        )
-
-    updated_reminder = Reminder(
-        task_id=existing_reminder.task_id,
-        user_id=existing_reminder.user_id,
-        user_email=existing_reminder.user_email if existing_reminder.user_email is not None else reminder.user_email,
-        reminder_time=existing_reminder.reminder_time if existing_reminder.reminder_time is not None else reminder.reminder_time,
-        message=existing_reminder.message if existing_reminder.messsage is not None else reminder.message
-    )
-    # TODO: Figure out how to re-schedule Celery tasks right
-    # check if we need to re-schedule Celery task
-    if reminder.reminder_time is not None:
-        pass
-
-    await message_broker.set(reminder_id, updated_reminder.model_dump_json())
-
-    return updated_reminder
+    # if not existing_reminder:
+    #    raise HTTPException(
+    #        status_code=status.HTTP_404_NOT_FOUND,
+    #        detail=f"Reminder was not found in Redis. Request by: {current_user.username}"
+    #    )
+    pass
 
 
 @router.delete("/{reminder_id}", response_model=dict)
