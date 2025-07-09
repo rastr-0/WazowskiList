@@ -51,6 +51,19 @@ services:
       - redis
     volumes:
       - .:/docker_app
+    networks:
+      - app-network
+
+  flower:
+    image: mher/flower
+    environment:
+      - FLOWER_BROKER=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - app-network
 
 networks:
   app-network:
