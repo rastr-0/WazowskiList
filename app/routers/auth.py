@@ -157,10 +157,6 @@ async def update_user(
         current_user: Annotated[User, Depends(utils.get_current_user)],
         db: AsyncIOMotorDatabase = Depends(motor_db.get_database)
 ) -> Any:
-    # TODO:
-    #  FIX: User's info updating works only when all fields are passed, otherwise, doesn't work
-    #   the right implementation is already in the 'update_reminder' endpoint, the same logic must be here
-
     """Endpoint for updating existing user's information
 
     Args:
