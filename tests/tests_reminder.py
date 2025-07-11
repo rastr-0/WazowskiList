@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 
 @patch("app.services.scheduler.schedule_reminder.delay")
-def test_create_reminder(client: TestClient, jwt_token, create_task: dict) -> None:
+def test_create_reminder(mock_delay, client: TestClient, jwt_token, create_task: dict) -> None:
     """Test creating new reminder (Celery mocked)"""
     token = jwt_token('updated')
     task_id = create_task['id']
