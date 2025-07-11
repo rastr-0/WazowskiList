@@ -51,6 +51,9 @@ services:
       - redis
     volumes:
       - .:/docker_app
+      # setting time the same as on the machine, where container was built
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - app-network
 
