@@ -20,6 +20,7 @@ pre-commit-hooks:
 test:
 	$(DOCKER_COMPOSE) exec -T $(SERVICE_NAME) pytest tests/tests_auth.py
 	$(DOCKER_COMPOSE) exec -T $(SERVICE_NAME) pytest tests/tests_task.py
+	$(DOCKER_COMPOSE) exec -T $(SERVICE_NAME) pytest tests/tests_reminder.py
 
 
 # order of execution
