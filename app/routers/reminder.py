@@ -12,7 +12,7 @@ from app.logs.logging_config import reminder_logger
 from app.models.reminder import Reminder
 from app.schemas.reminder import CreateReminder, ReminderResponse, UpdateReminder
 # uitls
-from app.utils.utils_models import get_current_user
+from app.utils.utils_models import get_current_user, get_task_by_id
 from app.utils.utils_models import prepare_email_body
 # scheduler
 from app.services.scheduler import schedule_reminder
@@ -20,6 +20,7 @@ from aioredis import Redis
 # other modules
 from typing import Any, Annotated
 import uuid
+from datetime import timedelta
 
 router = APIRouter(prefix="/api/schedule", tags=["reminders"])
 
@@ -53,7 +54,6 @@ async def create_reminder(
         task_id (str): Task ID for which reminder will be created
         current_user (User): User that is performing this request with his JWT token
         db (AsyncIOMotorDatabase): Database connection instance
-        # message_broker (Redis): Redis connection instance
 
     Returns:
         ReminderResponse: Pydantic model with data added to Redis
@@ -61,7 +61,8 @@ async def create_reminder(
             the purpose of avoiding IDE warnings
 
     Raises:
-        HTTPException (status_code=500): if new reminder cannot be inserted in the Redis
+        HTTPException (status_code=500): if new reminder cannot be processed by Celery
+        HTTPException(status_code=1001): if construction of the reminder fails
 
     Dependency Functions:
         see module-level docstring on top
@@ -78,31 +79,62 @@ async def create_reminder(
             "message": "Extremely important reminder, cannot be skipped"
         }
     """
-    # structure of the new reminder in Message Broker - Reddis
-    reminder_data = Reminder(
-        task_id=uuid.UUID(task_id),
-        user_id=current_user.id,
-        user_email=current_user.email,
-        # TODO: implement reminder time by default as a deadline - 1 hour
-        #   if not given any other specific time
-        reminder_time=reminder.reminder_time,
-        message=reminder.message
-    )
+
+    if current_user.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"For setting reminders is necessary to have an email address in the profile! Try adding it",
+            headers={"Details": "No email to send reminder"}
+        )
+
+    try:
+        task_in_reminder = await get_task_by_id(uuid.UUID(task_id), current_user, db)
+        task_deadline = task_in_reminder.deadline
+        reminder_data = Reminder(
+            task_id=uuid.UUID(task_id),
+            user_id=current_user.id,
+            user_email=current_user.email,
+            # if reminder time is not explicitly given, then it is deadline - 1 hour
+            reminder_time=(
+                reminder.reminder_time
+                if reminder.reminder_time is not None
+                else task_deadline - timedelta(hours=1)
+            ),
+            message=reminder.message
+        )
+        reminder_logger.info(f"Reminder was successfully formed: {reminder_data.reminder_time}"
+                             f"...{reminder.reminder_time} AND {task_deadline}")
+    except Exception as e:
+        reminder_logger.error(
+            f"Error constructing reminder for user: {current_user.username}. Error: {e}"
+        )
+        raise HTTPException(
+            status_code=status.WS_1011_INTERNAL_ERROR,
+            detail=f"Unexpected error occured while processing your reminder. Try again later!",
+            headers={"Details": "Reminder construction error"}
+        )
+
     try:
         email_body = await prepare_email_body(reminder_data, current_user, db)
-        # schedule the email to be sent
-        schedule_reminder.delay(str(reminder_data.user_email), email_body)
+        # schedule reminder at a specific time
+        schedule_reminder.apply_async(
+            args=[
+                str(reminder_data.user_email), email_body
+            ],
+            eta=reminder_data.reminder_time
+        )
 
         reminder_logger.info(
             f"New reminder was successfully inserted in Reddis by user: {current_user.username}"
         )
     except Exception as e:
         reminder_logger.error(
-            f"Error inserting new reminder in Redis by user: {current_user.username}"
+            f"Error processing task by Celery for user: {current_user.username}. Error: {e}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error inserting new reminder in Redis: {e}"
+            detail=f"Unexpected error occured while processing your reminder. Try again later!",
+            headers={"Details": "Celery task failure"}
         )
 
     return reminder_data
@@ -112,10 +144,7 @@ async def create_reminder(
 async def update_reminder(
         reminder_id: str,
         reminder: UpdateReminder,
-        current_user: Annotated[User, Depends(get_current_user)],
-        # message_broker depends on the instance of redis,
-        # because this object is callable and implements __call__ method
-        # message_broker: Annotated[Redis, Depends(redis)]
+        current_user: Annotated[User, Depends(get_current_user)]
 ) -> Any:
     """Endpoint for updating an existing reminder
 
@@ -123,7 +152,6 @@ async def update_reminder(
         reminder_id (uuid.UUID): Reminder ID
         reminder (CreateReminder): Data for updating reminder
         current_user (User): User that is performing this request with his JWT token
-        message_broker (Redis): Redis connection instance
 
     Returns:
         ReminderResponse: Pydantic model with updated data
@@ -133,13 +161,6 @@ async def update_reminder(
     Raises:
         HTTPException (status_code=404): if reminder with given ID was not found
     """
-    # existing_reminder = await message_broker.get(reminder_id)
-
-    # if not existing_reminder:
-    #    raise HTTPException(
-    #        status_code=status.HTTP_404_NOT_FOUND,
-    #        detail=f"Reminder was not found in Redis. Request by: {current_user.username}"
-    #    )
     pass
 
 
