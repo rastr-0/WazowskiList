@@ -4,7 +4,8 @@ from datetime import datetime
 
 
 class CreateReminder(BaseModel):
-    reminder_time: datetime = Field(
+    reminder_time: datetime | None = Field(
+        default=None,
         description="Time when the reminder will be send"
     )
     message: str = Field(

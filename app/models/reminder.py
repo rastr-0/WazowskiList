@@ -19,7 +19,8 @@ class Reminder(BaseModel):
     user_email: EmailStr = Field(
         description="User email"
     )
-    reminder_time: datetime = Field(
+    reminder_time: datetime | None = Field(
+        default=None,
         description="Reminder time"
     )
     message: str = Field(

@@ -57,7 +57,7 @@ UpdateTask = create_model(
 
 
 class TaskResponse(Task):
-    deadline: date | None = Field(
+    deadline: datetime | None = Field(
         default=None,
         description="Deadline of the task"
     )

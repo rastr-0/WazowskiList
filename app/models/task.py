@@ -48,7 +48,7 @@ class Task(BaseModel):
         description="Deadline of the task, format: YYYY-mm-dd"
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=datetime.now,
         description="Timestamp when task was created"
     )
     updated_at: datetime | None = Field(
