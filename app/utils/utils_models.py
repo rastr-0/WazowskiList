@@ -190,7 +190,7 @@ def convert_to_task_response(task: dict) -> TaskResponse:
         status=task['status'],
         owner=task['owner'],
         label=task['label'],
-        deadline=task['deadline'].date(),
+        deadline=task['deadline'],
         created_at=task['created_at'],
         updated_at=task['updated_at']
     )
@@ -200,9 +200,9 @@ async def get_task_by_id(
         task_id: uuid.UUID,
         current_user: User,
         db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
-) -> str | None:
+) -> TaskResponse | None:
     """
-    Get task by its ID
+    Get full task information by its ID
 
     Args:
         task_id (UUID4): ID of the task
@@ -214,12 +214,11 @@ async def get_task_by_id(
     collection = db.get_collection("tasks")
     try:
         task = await collection.find_one({"id": task_id})
-        task_name = task.get("name")
         # validating if user performing task is actually owning the task
-        if task.get("username") == current_user.username:
-            return task_name
-    except Exception as _:
-        return None
+        if task.get("owner") == current_user.username:
+            return convert_to_task_response(task)
+    except Exception as e:
+        raise ValueError(f"Error finding object by given id: {task_id} | Error description: {e}")
 
 
 def make_date_humanitic(ugly_date: datetime) -> str:
@@ -232,10 +231,26 @@ async def prepare_email_body(
         db: AsyncIOMotorDatabase
 ) -> str:
     task = await get_task_by_id(reminder.task_id, current_user, db)
-    body = f"""
-    Hey, your deadline is coming soon for the following task: {task}
-    Deadline time: {make_date_humanitic(reminder.reminder_time)}
-
-    Your reminding message: {reminder.message}
+    body = f"""\
+    <html>
+      <body style="background-color: #f4f4f4; padding: 30px; font-family: Arial, sans-serif;">
+        <div style="
+            max-width: 600px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        ">
+          <h2 style="color: #2c3e50;">Task Reminder</h2>
+          <p><strong>Task:</strong> {task.title}</p>
+          <p><strong>Description:</strong> {task.description}</p>
+          <p><strong>Deadline:</strong> {make_date_humanitic(reminder.reminder_time)}</p>
+          <p><strong>Your message:</strong> {reminder.message}</p>
+          <hr style="margin: 20px 0;">
+          <p style="font-size: 0.9em; color: #999;">🧠 Stay focused and good luck!<br>– The WazowskiList Team</p>
+        </div>
+      </body>
+    </html>
     """
     return body

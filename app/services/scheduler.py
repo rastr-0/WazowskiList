@@ -1,7 +1,6 @@
-# fastapi
-from fastapi import HTTPException, status
 # sending emails
 import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 # settings
 from app.config.settings import settings
@@ -18,12 +17,12 @@ def schedule_reminder(
 ):
     """Celery task for sending emails"""
     reminder_logger.info("Start of the schedule_reminder task")
-    msg = MIMEText(body_text)
+    msg = MIMEMultipart("alternative")
 
     msg['From'] = settings.SMTP_USER
-    msg['Subject'] = "Your reminder email from WazowskiList"
+    msg["Subject"] = "🔔 Reminder: Task deadline is coming!"
     msg['To'] = user_email
-    reminder_logger.info("Email was formed")
+    msg.attach(MIMEText(body_text, "html"))
     try:
         with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=10) as server:
             server.starttls()
@@ -31,6 +30,6 @@ def schedule_reminder(
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.sendmail(settings.SMTP_USER, str(user_email), msg.as_string())
         reminder_logger.info(f"Reminder was successfully to: {user_email}")
-    except smtplib.SMTPException as e:
+    except smtplib.SMTPException as _:
         reminder_logger.error(f"Error sending email to: {user_email}")
         raise smtplib.SMTPException
