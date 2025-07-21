@@ -1,4 +1,4 @@
-from app.logs.logging_config import auth_logger, tasks_logger, message_broker_logger, database_logger
+from app.logs.logging_config import auth_logger, tasks_logger, database_logger, reminder_logger
 
 
 # General Exception Base Class
@@ -74,6 +74,30 @@ class UpdateTaskException(AppException):
 class CreateConnectionException(AppException):
     def __init__(self, msg: str):
         super().__init__(database_logger, msg)
+
+
+class UpdateReminderException(AppException):
+    def __init__(self, user_triggered_operation: str, reminder_id: str):
+        message = f"Failed to update reminder (reminder_id: {reminder_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(tasks_logger, message)
+
+
+class ReminderNotFoundException(AppException):
+    def __init__(self, user_triggered_operation: str, reminder_id: str):
+        message = f"Reminder not found (reminder_id: {reminder_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(tasks_logger, message)
+
+
+class DeleteReminderException(AppException):
+    def __init__(self, user_triggered_operation: str, reminder_id: str):
+        message = f"Failed to delete remidner (reminder_id: {reminder_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(reminder_logger, message)
+
+
+class AddReminderException(AppException):
+    def __init__(self, user_triggered_operation: str, reminder_id):
+        message = f"Failed to add remidner (reminder_id: {reminder_id}, triggered by user: {user_triggered_operation})"
+        super().__init__(reminder_logger, message)
 
 
 class LoggingSetupException(Exception):
