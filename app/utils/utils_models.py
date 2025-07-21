@@ -196,6 +196,18 @@ def convert_to_task_response(task: dict) -> TaskResponse:
     )
 
 
+def convert_to_reminder_response(reminder: dict) -> Reminder:
+    return Reminder(
+        id=reminder['id'],
+        task_id=reminder['task_id'],
+        celery_id=reminder['celery_id'],
+        user_id=reminder['user_id'],
+        user_email=reminder['user_email'],
+        reminder_time=reminder['reminder_time'],
+        message=reminder['message']
+    )
+
+
 async def get_task_by_id(
         task_id: uuid.UUID,
         current_user: User,
@@ -221,6 +233,18 @@ async def get_task_by_id(
         raise ValueError(f"Error finding object by given id: {task_id} | Error description: {e}")
 
 
+async def get_reminder_by_id(
+        reminder_id: uuid.UUID,
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
+) -> Reminder | None:
+    collection = db.get_collection("reminders")
+    try:
+        reminder = await collection.find_one({"id": reminder_id})
+        return convert_to_reminder_response(reminder)
+    except Exception as e:
+        raise ValueError(f"Error finding object by given id: {reminder_id} | Error description: {e}")
+
+
 def make_date_humanitic(ugly_date: datetime) -> str:
     return ugly_date.strftime("%m/%d/%Y, %H:%M")
 
@@ -230,7 +254,7 @@ async def prepare_email_body(
         current_user: User,
         db: AsyncIOMotorDatabase
 ) -> str:
-    task = await get_task_by_id(reminder.task_id, current_user, db)
+    task = await get_task_by_id(uuid.UUID(reminder.task_id), current_user, db)
     body = f"""\
     <html>
       <body style="background-color: #f4f4f4; padding: 30px; font-family: Arial, sans-serif;">
