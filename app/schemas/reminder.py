@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict, create_model
 from typing import Optional
 from datetime import datetime
+import uuid
 
 
 class CreateReminder(BaseModel):
@@ -26,7 +27,18 @@ class CreateReminder(BaseModel):
 
 
 class ReminderResponse(CreateReminder):
-    pass
+    id: uuid.UUID = Field(
+        alias="_id",
+        default_factory=uuid.uuid4,
+        description="Identefication of the reminder"
+    )
+    celery_id: str | None = Field(
+        default=None,
+        description="Reminder ID"
+    )
+    user_id: uuid.UUID = Field(
+        description="User ID"
+    )
 
 
 UpdateReminder = create_model(

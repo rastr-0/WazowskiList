@@ -10,8 +10,12 @@ class Reminder(BaseModel):
         default_factory=uuid.uuid4,
         description="Identefication of the reminder"
     )
-    task_id: uuid.UUID = Field(
+    task_id: str = Field(
         description="Task ID"
+    )
+    celery_id: str | None = Field(
+        default=None,
+        description="Reminder ID"
     )
     user_id: uuid.UUID = Field(
         description="User ID"
