@@ -1,10 +1,12 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, create_model
+from typing import Optional
 from datetime import datetime
-from app.utils.utils import convert_to_optional
+import uuid
 
 
 class CreateReminder(BaseModel):
-    reminder_time: datetime = Field(
+    reminder_time: datetime | None = Field(
+        default=None,
         description="Time when the reminder will be send"
     )
     message: str = Field(
@@ -25,11 +27,24 @@ class CreateReminder(BaseModel):
 
 
 class ReminderResponse(CreateReminder):
-    pass
+    id: uuid.UUID = Field(
+        alias="_id",
+        default_factory=uuid.uuid4,
+        description="Identefication of the reminder"
+    )
+    celery_id: str | None = Field(
+        default=None,
+        description="Reminder ID"
+    )
+    user_id: uuid.UUID = Field(
+        description="User ID"
+    )
 
 
-class UpdateReminder(CreateReminder):
-    # convert_to_optional converts all the fields of CreateReminder to optional
-    # and set them to __annotations__ of UpdateReminder class
-    # by using this approach we don't duplicate code
-    __annotations__ = convert_to_optional(CreateReminder)
+UpdateReminder = create_model(
+    "UpdateReminder",
+    **{
+        k: (Optional[v], None)
+        for k, v in CreateReminder.__annotations__.items()
+    }
+)

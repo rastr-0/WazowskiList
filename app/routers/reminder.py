@@ -1,4 +1,5 @@
 # FastAPI models
+import time
 from fastapi import APIRouter, Depends, HTTPException, status
 # models
 from app.models.user import User
@@ -11,15 +12,20 @@ from app.logs.logging_config import reminder_logger
 from app.models.reminder import Reminder
 from app.schemas.reminder import CreateReminder, ReminderResponse, UpdateReminder
 # uitls
-from app.utils.utils import get_current_user
+from app.utils.utils_models import get_current_user, get_task_by_id
+from app.utils.utils_models import get_reminder_by_id
+from app.utils.utils_models import prepare_email_body
 # scheduler
 from app.services.scheduler import schedule_reminder
-# redis
-from app.config.redis import redis
-from aioredis import Redis
+from app.config.celery import celery_app
+# exceptions
+from app.exceptions.custom_exceptions import BadUpdateRequestException
+from app.exceptions.custom_exceptions import DeleteReminderException, AddReminderException
+from app.exceptions.custom_exceptions import ReminderNotFoundException, UpdateReminderException
 # other modules
 from typing import Any, Annotated
 import uuid
+from datetime import timedelta
 
 router = APIRouter(prefix="/api/schedule", tags=["reminders"])
 
@@ -39,13 +45,12 @@ Common Parameters:
 """
 
 
-@router.post("/reminder", response_model=ReminderResponse)
+@router.post("/reminder", response_model=Reminder)
 async def create_reminder(
         reminder: CreateReminder,
         task_id: str,
         current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)],
-        message_broker: Annotated[Redis, Depends(redis.get_redis())]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
     """Endpoint for creating a reminder for existing task
 
@@ -54,7 +59,6 @@ async def create_reminder(
         task_id (str): Task ID for which reminder will be created
         current_user (User): User that is performing this request with his JWT token
         db (AsyncIOMotorDatabase): Database connection instance
-        message_broker (Redis): Redis connection instance
 
     Returns:
         ReminderResponse: Pydantic model with data added to Redis
@@ -62,7 +66,8 @@ async def create_reminder(
             the purpose of avoiding IDE warnings
 
     Raises:
-        HTTPException (status_code=500): if new reminder cannot be inserted in the Redis
+        HTTPException (status_code=500): if new reminder cannot be processed by Celery
+        HTTPException(status_code=500): if construction of the reminder fails
 
     Dependency Functions:
         see module-level docstring on top
@@ -79,49 +84,91 @@ async def create_reminder(
             "message": "Extremely important reminder, cannot be skipped"
         }
     """
-    # structure of the new reminder in Message Broker - Reddis
-    reminder_data = Reminder(
-        task_id=uuid.UUID(task_id),
-        user_id=current_user.id,
-        user_email=current_user.email,
-        reminder_time=reminder.reminder_time,
-        message=reminder.message
-    )
+    # checking if user has an email to send a reminder
+    if current_user.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"For setting reminders is necessary to have an email address in the profile! Try adding it",
+            headers={"Details": "No email to send reminder"}
+        )
+
     try:
-        # store reminder in Redis
-        await message_broker.set(str(reminder_data.task_id), reminder_data.model_dump_json())
-        # schedule the reminding email to be sent
-        await schedule_reminder(reminder_data, reminder_data.task_id, current_user, db)
+        task_in_reminder = await get_task_by_id(uuid.UUID(task_id), current_user, db)
+        task_deadline = task_in_reminder.deadline
+        reminder_data = Reminder(
+            task_id=str(task_id),
+            user_id=current_user.id,
+            user_email=current_user.email,
+            # if reminder time is not explicitly given, then it is deadline - 1 hour
+            reminder_time=(
+                reminder.reminder_time
+                if reminder.reminder_time is not None
+                else task_deadline - timedelta(hours=1)
+            ),
+            message=reminder.message
+        )
+    except Exception as e:
+        reminder_logger.error(
+            f"Error constructing reminder for user: {current_user.username}. Error: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error occured while processing your reminder. Try again later!",
+            headers={"Details": "Reminder construction error"}
+        )
+
+    try:
+        email_body = await prepare_email_body(reminder_data, current_user, db)
+        # schedule reminder at a specific time
+        celery_res = schedule_reminder.apply_async(
+            args=[
+                str(reminder_data.user_email), email_body
+            ],
+            eta=reminder_data.reminder_time
+        )
+
+        # update reminder instance with scheduled id reminder
+        reminder_data.celery_id = celery_res.id
 
         reminder_logger.info(
             f"New reminder was successfully inserted in Reddis by user: {current_user.username}"
         )
     except Exception as e:
         reminder_logger.error(
-            f"Error inserting new reminder in Redis by user: {current_user.username}"
+            f"Error processing task by Celery for user: {current_user.username}. Error: {e}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error inserting new reminder in Redis: {e}"
+            detail=f"Unexpected error occured while processing your reminder. Try again later!",
+            headers={"Details": "Celery task failure"}
         )
+
+    # store reminder in the database
+    try:
+        collection = db.get_collection("reminders")
+        await collection.insert_one(reminder_data.model_dump())
+        reminder_logger.info(f"New reminder was successfully inserted by user: {current_user.username} "
+                             f"with id: {reminder_data.id}")
+    except Exception:
+        raise AddReminderException(current_user.username, reminder_data.id)
 
     return reminder_data
 
 
-@router.put("/reminder/{reminder_id}", response_model=ReminderResponse)
+@router.put("/reminder", response_model=ReminderResponse)
 async def update_reminder(
         reminder_id: str,
         reminder: UpdateReminder,
         current_user: Annotated[User, Depends(get_current_user)],
-        message_broker: Annotated[Redis, Depends(redis.get_redis())]
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ) -> Any:
     """Endpoint for updating an existing reminder
 
     Args:
-        reminder_id (uuid.UUID): Reminder ID
+        reminder_id (str): Reminder ID
         reminder (CreateReminder): Data for updating reminder
         current_user (User): User that is performing this request with his JWT token
-        message_broker (Redis): Redis connection instance
+        db (AsyncIOMotorDatabase): Database connection instance
 
     Returns:
         ReminderResponse: Pydantic model with updated data
@@ -129,35 +176,116 @@ async def update_reminder(
             the purpose of avoiding IDE warnings
 
     Raises:
-        HTTPException (status_code=404): if reminder with given ID was not found
+        BadUpdateException: if updated fields are not passed
+        UpdateReminderException: if failed to find a reminder in the database by given ID
+        HTTPException (status_code=404): if failed to revoke the old Redis task
     """
-    existing_reminder = await message_broker.get(reminder_id)
+    update_data = {k: v for k, v in reminder.model_dump().items() if v is not None}
+    if not update_data:
+        raise BadUpdateRequestException(current_user.username, reminder_id)
 
-    if not existing_reminder:
+    # get current reminder info (before update)
+    reminder_info = await get_reminder_by_id(uuid.UUID(reminder_id), db)
+    if not reminder_info:
+        raise UpdateReminderException(current_user.username, reminder_id)
+
+    # revoke the old task
+    try:
+        celery_app.control.revoke(reminder_info.celery_id, terminate=False)
+    except Exception as e:
+        reminder_logger.error(f"Failed to revoke task {reminder_info.celery_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Reminder was not found in Redis. Request by: {current_user.username}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to revoke previous reminder task"
         )
 
-    updated_reminder = Reminder(
-        task_id=existing_reminder.task_id,
-        user_id=existing_reminder.user_id,
-        user_email=existing_reminder.user_email if existing_reminder.user_email is not None else reminder.user_email,
-        reminder_time=existing_reminder.reminder_time if existing_reminder.reminder_time is not None else reminder.reminder_time,
-        message=existing_reminder.message if existing_reminder.messsage is not None else reminder.message
-    )
-    # TODO: Figure out how to re-schedule Celery tasks right
-    # check if we need to re-schedule Celery task
-    if reminder.reminder_time is not None:
-        pass
+    # update MongoDB with user changes
+    try:
+        reminder_logger.info(f"Trying to update reminder with the id: {reminder_id}")
+        collection = db.get_collection("reminders")
+        result = await collection.update_one(
+            {"id": uuid.UUID(reminder_id)},
+            {"$set": update_data}
+        )
+        if result.matched_count == 0 or result.modified_count == 0:
+            raise UpdateReminderException(current_user.username, reminder_id)
+    except Exception:
+        raise AddReminderException(current_user.username, reminder_id)
 
-    await message_broker.set(reminder_id, updated_reminder.model_dump_json())
+    # load fresh reminder info (after update)
+    reminder_info = await get_reminder_by_id(uuid.UUID(reminder_id), db)
 
-    return updated_reminder
+    # schedule new Celery task
+    try:
+        email_body = await prepare_email_body(reminder_info, current_user, db)
+        celery_res = schedule_reminder.apply_async(
+            args=[str(reminder_info.user_email), email_body],
+            eta=reminder_info.reminder_time
+        )
+    except Exception as e:
+        reminder_logger.error(f"Celery scheduling failed for reminder {reminder_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to schedule new reminder task"
+        )
+
+    # save new celery_id to DB
+    try:
+        await collection.update_one(
+            {"id": reminder_id},
+            {"$set": {"celery_id": celery_res.id}}
+        )
+    except Exception as e:
+        reminder_logger.error(f"Failed to update celery_id in DB: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Reminder was updated and scheduled, but celery_id was not saved"
+        )
+
+    reminder_info.celery_id = celery_res.id
+    return reminder_info
 
 
-@router.delete("/reminder/{reminder_id}", response_model=dict)
+@router.delete("/{reminder_id}", response_model=dict)
 async def delete_reminder(
-        reminder_id: uuid.UUID
+        reminder_id: str,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[AsyncIOMotorDatabase, Depends(motor_db.get_database)]
 ):
-    pass
+    """Endpoint for deleting an existing reminder
+
+    Args:
+        reminder_id (str): Reminder ID
+        current_user (User): User that is performing this request with his JWT token
+        db (AsyncIOMotorDatabase): Database connection instance
+
+    Returns:
+        dict: Information about successfull deletion of the reminder with its ID
+
+    Raises:
+        ReminderNotFound:
+    """
+    try:
+        reminder_to_delete = await get_reminder_by_id(uuid.UUID(reminder_id), db)
+
+        celery_app.control.revoke(reminder_to_delete.celery_id, terminate=False)
+        reminder_logger.info(
+            f"Attempting to delete reminder (reminder_id: {reminder_id}) by user: {current_user.username}"
+        )
+
+        collection = db.get_collection("reminders")
+        result = await collection.delete_one(
+            {
+                "id": uuid.UUID(reminder_id)
+            }
+        )
+        if result.deleted_count == 0:
+            raise ReminderNotFoundException(current_user.username, reminder_id)
+
+        reminder_logger.info(
+            f"Reminder successfully deleted (reminder_id: {reminder_id}) by user: {current_user.username}"
+        )
+        return {"detail": f"Reminder (id: {reminder_id}) was successfully deleted"}
+
+    except Exception:
+        raise DeleteReminderException(current_user.username, reminder_id)

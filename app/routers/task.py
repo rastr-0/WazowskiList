@@ -8,7 +8,7 @@ from app.schemas.task import CreateTask, UpdateTask, TaskResponse, TaskCollectio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.database.database import motor_db
 # utils
-from app.utils.utils import get_current_user, convert_to_task_response
+from app.utils.utils_models import get_current_user, convert_to_task_response
 # logs
 from app.logs.logging_config import tasks_logger
 # custom exceptions
@@ -84,13 +84,6 @@ async def create_task(
         }
 
     """
-    # We need to specify a default time when converting a date to a datetime object
-    # because the model's 'deadline' field is of type datetime. MongoDB stores
-    # datetime objects, not date objects. When the user provides only a date
-    # (without specifying the time), it is essential to set a default time (e.g.,
-    # midnight) to create a complete datetime object for MongoDB
-    # (it cannot store date object)
-    deadline_datetime = datetime.combine(task.deadline, datetime.min.time())
 
     db_task = Task(
         title=task.title,
@@ -98,8 +91,8 @@ async def create_task(
         status=task.status,
         owner=current_user.username,
         label=task.label,
-        deadline=deadline_datetime,
-        created_at=datetime.utcnow()
+        deadline=task.deadline,
+        created_at=datetime.now()
     )
     try:
         collection = db.get_collection("tasks")

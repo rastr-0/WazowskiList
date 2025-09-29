@@ -7,6 +7,9 @@ class MessageBroker:
     def __init__(self):
         self.broker: Redis = None
 
+    async def __call__(self):
+        return self.broker
+
     async def connect_and_init_db(self):
         """Establish a connection to Redis and initialize"""
         redis_url = "redis://redis:6379/0"

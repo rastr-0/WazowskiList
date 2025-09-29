@@ -55,7 +55,7 @@ jobs:
 
       # caching pre-commit dependencies for saving execution time of the pipeline
       - name: Cache Dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: ${{ runner.os }}-precommit-${{ hashFiles('.pre-commit-config.yaml') }}

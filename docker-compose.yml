@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     container_name: fastapi-app-dev
@@ -12,7 +10,7 @@ services:
     env_file:
       - .env
     environment:
-      - PYTHONPAH=/docker_app
+      - PYTHONPATH=/docker_app
     depends_on:
       - mongodb
       - redis
@@ -47,11 +45,28 @@ services:
   celery-worker:
     build: .
     container_name: celery_worker
+    working_dir: /docker_app
     command: celery -A app.services.scheduler worker --loglevel=info
     depends_on:
       - redis
     volumes:
       - .:/docker_app
+      # setting time the same as on the machine, where container was built
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - app-network
+
+  flower:
+    image: mher/flower
+    environment:
+      - FLOWER_BROKER=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - app-network
 
 networks:
   app-network:

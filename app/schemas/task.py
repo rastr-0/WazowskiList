@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, create_model
+from typing import Optional
 from app.models.task import Task
 from datetime import datetime, date
-from app.utils.utils import convert_to_optional
 
 
 class CreateTask(BaseModel):
@@ -46,22 +46,18 @@ class CreateTask(BaseModel):
     )
 
 
-class UpdateTask(CreateTask):
-    """Pydantic model for updating task information. All the fields are optional
-
-    Attributes:
-        title: New title of the task
-        description: New description of the task
-        status: New status of the task
-    """
-    # convert_to_optional converts all the fields of CreateTask to optional
-    # and set them to __annotations__ of UpdateTask class
-    # by using this approach we don't duplicate code
-    __annotations__ = convert_to_optional(CreateTask)
+# Pydantic model for updating task information. All the fields are optional
+UpdateTask = create_model(
+    "UpdateTask",
+    **{
+        k: (Optional[v], None)
+        for k, v in CreateTask.__annotations__.items()
+    }
+)
 
 
 class TaskResponse(Task):
-    deadline: date | None = Field(
+    deadline: datetime | None = Field(
         default=None,
         description="Deadline of the task"
     )
